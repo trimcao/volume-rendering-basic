@@ -321,7 +321,6 @@ int main()
     
     // Build and compile our shader program
     Shader objectShader("shader/object.vs", "shader/object.fs");
-    //Shader lampShader("shader/lamp.vs", "shader/lamp.fs");
     
     // setup the vertices and buffers
     setupDraw();
