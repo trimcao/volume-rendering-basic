@@ -8,6 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		B4F0A3042079629500E56408 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B4F0A3032079629500E56408 /* main.cpp */; };
+		B4F0A30C207962B500E56408 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B4F0A30B207962B500E56408 /* OpenGL.framework */; };
+		B4F0A3102079637F00E56408 /* libGLEW.2.1.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = B4F0A30F2079637F00E56408 /* libGLEW.2.1.0.dylib */; };
+		B4F0A3122079638D00E56408 /* libglfw.3.2.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = B4F0A3112079638D00E56408 /* libglfw.3.2.dylib */; };
+		B4F0A324207965DC00E56408 /* libnanogui.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = B4F0A30D2079633F00E56408 /* libnanogui.dylib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,6 +29,24 @@
 /* Begin PBXFileReference section */
 		B4F0A3002079629500E56408 /* assignment4 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = assignment4; sourceTree = BUILT_PRODUCTS_DIR; };
 		B4F0A3032079629500E56408 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		B4F0A30B207962B500E56408 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
+		B4F0A30D2079633F00E56408 /* libnanogui.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libnanogui.dylib; path = ../../../../../../nanogui/build/libnanogui.dylib; sourceTree = "<group>"; };
+		B4F0A30F2079637F00E56408 /* libGLEW.2.1.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libGLEW.2.1.0.dylib; path = ../../../../../../../../usr/local/Cellar/glew/2.1.0/lib/libGLEW.2.1.0.dylib; sourceTree = "<group>"; };
+		B4F0A3112079638D00E56408 /* libglfw.3.2.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libglfw.3.2.dylib; path = ../../../../../../../../usr/local/Cellar/glfw/3.2.1/lib/libglfw.3.2.dylib; sourceTree = "<group>"; };
+		B4F0A3132079646000E56408 /* load_obj.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = load_obj.h; sourceTree = "<group>"; };
+		B4F0A3152079646900E56408 /* container.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = container.jpg; sourceTree = "<group>"; };
+		B4F0A3162079646900E56408 /* cube_diffuse.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cube_diffuse.png; sourceTree = "<group>"; };
+		B4F0A3172079646900E56408 /* cube_normal.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cube_normal.png; sourceTree = "<group>"; };
+		B4F0A3182079646900E56408 /* cyborg_diffuse.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cyborg_diffuse.png; sourceTree = "<group>"; };
+		B4F0A3192079646900E56408 /* cyborg_normal.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cyborg_normal.png; sourceTree = "<group>"; };
+		B4F0A31B2079647100E56408 /* cube.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = cube.obj; sourceTree = "<group>"; };
+		B4F0A31C2079647100E56408 /* cyborg.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = cyborg.obj; sourceTree = "<group>"; };
+		B4F0A31D2079647100E56408 /* rock.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = rock.obj; sourceTree = "<group>"; };
+		B4F0A31E2079647100E56408 /* two_cubes.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = two_cubes.obj; sourceTree = "<group>"; };
+		B4F0A3202079647900E56408 /* object.fs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = object.fs; sourceTree = "<group>"; };
+		B4F0A3212079647900E56408 /* object.vs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = object.vs; sourceTree = "<group>"; };
+		B4F0A3222079648300E56408 /* shader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = shader.h; sourceTree = "<group>"; };
+		B4F0A3232079648C00E56408 /* stb_image.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -32,6 +54,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B4F0A324207965DC00E56408 /* libnanogui.dylib in Frameworks */,
+				B4F0A3122079638D00E56408 /* libglfw.3.2.dylib in Frameworks */,
+				B4F0A3102079637F00E56408 /* libGLEW.2.1.0.dylib in Frameworks */,
+				B4F0A30C207962B500E56408 /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -43,6 +69,7 @@
 			children = (
 				B4F0A3022079629500E56408 /* assignment4 */,
 				B4F0A3012079629500E56408 /* Products */,
+				B4F0A30A207962B500E56408 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -57,9 +84,58 @@
 		B4F0A3022079629500E56408 /* assignment4 */ = {
 			isa = PBXGroup;
 			children = (
+				B4F0A3222079648300E56408 /* shader.h */,
+				B4F0A3232079648C00E56408 /* stb_image.h */,
+				B4F0A31F2079647900E56408 /* shader */,
+				B4F0A31A2079647100E56408 /* models */,
+				B4F0A3142079646900E56408 /* textures */,
+				B4F0A3132079646000E56408 /* load_obj.h */,
 				B4F0A3032079629500E56408 /* main.cpp */,
 			);
 			path = assignment4;
+			sourceTree = "<group>";
+		};
+		B4F0A30A207962B500E56408 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				B4F0A3112079638D00E56408 /* libglfw.3.2.dylib */,
+				B4F0A30F2079637F00E56408 /* libGLEW.2.1.0.dylib */,
+				B4F0A30D2079633F00E56408 /* libnanogui.dylib */,
+				B4F0A30B207962B500E56408 /* OpenGL.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		B4F0A3142079646900E56408 /* textures */ = {
+			isa = PBXGroup;
+			children = (
+				B4F0A3152079646900E56408 /* container.jpg */,
+				B4F0A3162079646900E56408 /* cube_diffuse.png */,
+				B4F0A3172079646900E56408 /* cube_normal.png */,
+				B4F0A3182079646900E56408 /* cyborg_diffuse.png */,
+				B4F0A3192079646900E56408 /* cyborg_normal.png */,
+			);
+			path = textures;
+			sourceTree = "<group>";
+		};
+		B4F0A31A2079647100E56408 /* models */ = {
+			isa = PBXGroup;
+			children = (
+				B4F0A31B2079647100E56408 /* cube.obj */,
+				B4F0A31C2079647100E56408 /* cyborg.obj */,
+				B4F0A31D2079647100E56408 /* rock.obj */,
+				B4F0A31E2079647100E56408 /* two_cubes.obj */,
+			);
+			path = models;
+			sourceTree = "<group>";
+		};
+		B4F0A31F2079647900E56408 /* shader */ = {
+			isa = PBXGroup;
+			children = (
+				B4F0A3202079647900E56408 /* object.fs */,
+				B4F0A3212079647900E56408 /* object.vs */,
+			);
+			path = shader;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -233,6 +309,19 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				HEADER_SEARCH_PATHS = (
+					/Users/trimcao/nanogui/include,
+					/Users/trimcao/glm,
+					/usr/local/include,
+					/Users/trimcao/nanogui/ext/nanovg/src,
+					/Users/trimcao/nanogui/ext/eigen,
+				);
+				LD_RUNPATH_SEARCH_PATHS = /Users/trimcao/nanogui/build;
+				LIBRARY_SEARCH_PATHS = (
+					/Users/trimcao/nanogui/build,
+					/usr/local/Cellar/glew/2.1.0/lib,
+					/usr/local/Cellar/glfw/3.2.1/lib,
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -241,6 +330,19 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				HEADER_SEARCH_PATHS = (
+					/Users/trimcao/nanogui/include,
+					/Users/trimcao/glm,
+					/usr/local/include,
+					/Users/trimcao/nanogui/ext/nanovg/src,
+					/Users/trimcao/nanogui/ext/eigen,
+				);
+				LD_RUNPATH_SEARCH_PATHS = /Users/trimcao/nanogui/build;
+				LIBRARY_SEARCH_PATHS = (
+					/Users/trimcao/nanogui/build,
+					/usr/local/Cellar/glew/2.1.0/lib,
+					/usr/local/Cellar/glfw/3.2.1/lib,
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
