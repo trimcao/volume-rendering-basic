@@ -38,6 +38,7 @@ unsigned int loadTexture(const char *path);
 void computeTangent(std::vector<Vertex>&vertices);
 void setupDraw();
 void resetValues();
+std::vector<glm::vec3> vertex_transform_view(GLfloat vertices[], int size, glm::mat4 modelView);
 
 enum render_type {
     Render1 = 0,
@@ -45,29 +46,12 @@ enum render_type {
     Render3
 };
 
-enum culling_type {
-    Culling1 = 0,
-    Culling2
-};
-
-enum rotate_about_axis {
-    Axis1 = 0,
-    Axis2,
-    Axis3
-};
-
-enum shading_type {
-    Shading1 = 0,
-    Shading2
-};
-
-enum depth_type {
-    Depth1 = 0,
-    Depth2
-};
 
 // Window dimensions
 const GLuint SCR_WIDTH = 1024, SCR_HEIGHT = 768;
+
+// sampling rate
+int sampling_rate = 10;
 
 float camU = 0.0f; // in camera coordinate
 float camV = 0.0f;
@@ -100,12 +84,11 @@ std::string modelPath = "models/" + modelName + ".obj";
 std::string lastModelPath = modelPath;
 std::string lastModelName = modelName;
 render_type renderType = Render2;
-culling_type cullingType = Culling1;
-Color colval(1.0f, 0.5f, 0.3f, 1.f);
+Color colval(0.3f, 0.5f, 1.0f, 1.0f);
 
 float shininess = 32.0f;
-bool pointLightFlag = true;
-bool dirLightFlag = false;
+bool pointLightFlag = false;
+bool dirLightFlag = true;
 bool rotateCam = false;
 
 // directional light attributes
@@ -122,14 +105,6 @@ Color pointLightAmbient(0.2f, 0.1f, 0.05f, 1.0f);
 Color pointLightDiffuse(1.0f, 0.5f, 0.3f, 1.0f);
 Color pointLightSpecular(1.0f, 1.0f, 1.0f, 1.0f);
 
-// rotate attributes
-rotate_about_axis rotateAxis = Axis1;
-rotate_about_axis lastRotateAxis = Axis1;
-float rotateDeg = 0.0;
-
-shading_type shadingType = Shading1;
-depth_type depthType = Depth1;
-
 // light position
 glm::vec3 lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
 glm::vec3 defaultLightPos = lightPos;
@@ -137,8 +112,8 @@ glm::vec3 defaultLightPos = lightPos;
 // turn on/off diffuse mapping and normal mapping
 unsigned int diffuseMap;
 unsigned int normalMap;
-bool diffuseMapFlag = true;
-bool normalMapFlag = true;
+bool diffuseMapFlag = false;
+bool normalMapFlag = false;
 
 Screen *screen = nullptr;
 
@@ -227,18 +202,11 @@ int main()
     gui->addGroup("Configuration");
     gui->addVariable("z near", zNear)->setSpinnable(true);
     gui->addVariable("z far", zFar)->setSpinnable(true);
-    gui->addVariable("Culling type", cullingType, enabled)->setItems({"CCW", "CW"});
-    gui->addVariable("Shading type", shadingType, enabled)->setItems({"SMOOTH", "FLAT"});
-    gui->addVariable("Depth type", depthType, enabled)->setItems({"LESS", "ALWAYS"});
     gui->addVariable("Model name", modelName);
     gui->addButton("Reload model", []() {
         resetValues(); setupDraw();
         //gui->refresh();
         //gui2->refresh();
-    });
-    gui->addButton("Reset light", []() {
-        lightPos = defaultLightPos;
-        rotateDeg = 0.0;
     });
     
     // create another Selector Bar
@@ -248,22 +216,6 @@ int main()
     gui2->addGroup("Lighting");
     gui2->addVariable("Object color", colval);
     gui2->addVariable("Object shininess", shininess)->setSpinnable(true);
-    
-    gui2->addVariable("Dir light status", dirLightFlag);
-    gui2->addVariable("Dir light X", dirLightX)->setSpinnable(true);
-    gui2->addVariable("Dir light Y", dirLightY)->setSpinnable(true);
-    gui2->addVariable("Dir light Z", dirLightZ)->setSpinnable(true);
-    gui2->addVariable("Dir light ambient color", dirLightAmbient);
-    gui2->addVariable("Dir light diffuse color", dirLightDiffuse);
-    gui2->addVariable("Dir light specular color", dirLightSpecular);
-    
-    gui2->addVariable("Point light status", pointLightFlag);
-    gui2->addVariable("Point light ambient color", pointLightAmbient);
-    gui2->addVariable("Point light diffuse color", pointLightDiffuse);
-    gui2->addVariable("Point light specular color", pointLightSpecular);
-    
-    gui2->addVariable("Rotate camera", rotateCam);
-    gui2->addVariable("Point light rotate about", rotateAxis, enabled)->setItems({"X", "Y", "Z"});
     
     gui2->addVariable("Texture map status", diffuseMapFlag);
     gui2->addVariable("Normal map status", normalMapFlag);
@@ -325,6 +277,47 @@ int main()
     // setup the vertices and buffers
     setupDraw();
     
+    GLfloat cube_vertices[24] = {
+        0.0, 0.0, 0.0,
+        0.0, 0.0, 1.0,
+        0.0, 1.0, 0.0,
+        0.0, 1.0, 1.0,
+        1.0, 0.0, 0.0,
+        1.0, 0.0, 1.0,
+        1.0, 1.0, 0.0,
+        1.0, 1.0, 1.0
+    };
+    
+    GLuint cube_indices[36] = {
+        1,5,7,
+        7,3,1,
+        0,2,6,
+        6,4,0,
+        0,1,3,
+        3,2,0,
+        7,5,4,
+        4,6,7,
+        2,3,7,
+        7,6,2,
+        1,0,4,
+        4,5,1
+    };
+    
+    GLuint cube_edges[24]{
+        1,5,
+        5,7,
+        7,3,
+        3,1,
+        0,4,
+        4,6,
+        6,2,
+        2,0,
+        0,1,
+        2,3,
+        4,5,
+        6,7
+    };
+    
     // shader configuration
     // --------------------
     objectShader.Use();
@@ -335,6 +328,7 @@ int main()
     gui->refresh();
     gui2->refresh();
     
+    
     // Game loop
     while (!glfwWindowShouldClose(window))
     {
@@ -344,19 +338,6 @@ int main()
         // Clear the colorbuffer and depth buffer
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
-        // enable depth test
-        glEnable(GL_DEPTH_TEST);
-        // set depth type
-        switch(depthType)
-        {
-            case Depth1:
-                glDepthFunc(GL_LESS);
-                break;
-            case Depth2:
-                glDepthFunc(GL_ALWAYS);
-                break;
-        }
         
         // update model path (if changed)
         if (lastModelName.compare(modelName) != 0)
@@ -380,6 +361,23 @@ int main()
         // projection matrix
         glm::mat4 projection = glm::perspective(glm::radians(viewDegree), (float)SCR_WIDTH / (float)SCR_HEIGHT, zNear, zFar);
         
+        
+        // test transforming vertices
+        glm::mat4 modelView = view*model;
+        //std::cout << "Size of cube vertices: " << sizeof(cube_vertices) / sizeof(*cube_vertices) << "\n";
+        std::vector<glm::vec3> transform = vertex_transform_view(cube_vertices, 24, modelView);
+        
+        
+        for (int i = 0; i < 4; i++) {
+            std::cout << modelView[i].x << " " << modelView[i].y << " " << modelView[i].z << " " << modelView[i].w << "\n";
+        }
+        
+        for (int i = 0; i < 8; i++) {
+            //std::cout << transform[i].x << " " << transform[i].y << " " << transform[i].z << "\n";
+        }
+        break;
+        
+        
         // get matrix's uniform location and set matrices
         // set model, view and projection matrices
         objectShader.Use();
@@ -388,43 +386,8 @@ int main()
         objectShader.setMat4("view", view);
         objectShader.setMat4("projection", projection);
         
-        // set lighting attributes for object shader
-        // set light position based on current rotation
-        float radius = glm::abs(defaultLightPos.z);
-        switch(rotateAxis)
-        {
-            case Axis1:
-                lightPos = glm::vec3(defaultLightPos.x, defaultLightPos.y+radius*glm::sin(rotateDeg), radius*glm::cos(rotateDeg));
-                break;
-            case Axis2:
-                lightPos = glm::vec3(defaultLightPos.x+radius*glm::sin(rotateDeg), defaultLightPos.y, radius*glm::cos(rotateDeg));
-                break;
-            case Axis3:
-                // compute the radius for the rotation, set it at max(stretchX, stretchY)
-                float aveStretch = glm::max(stretchX, stretchY);
-                lightPos = glm::vec3(defaultLightPos.x+aveStretch*glm::sin(rotateDeg), defaultLightPos.y+aveStretch*glm::cos(rotateDeg), defaultLightPos.z/2);
-                break;
-        }
-        // reset rotate degree if we change the rotation axis.
-        if (lastRotateAxis != rotateAxis) { rotateDeg = 0.0; }
-        lastRotateAxis = rotateAxis;
-        // increase the rotation degree, set it at 0.005, roughly the real-time duration (compared to glfwGetTime() method).
-        if(rotateCam)
-        {
-            rotateDeg += 0.005;
-        }
-        
         // set shading type: smooth vs flat shading.
         bool flatFlag = false;
-        switch(shadingType)
-        {
-            case Shading1:
-                flatFlag = false;
-                break;
-            case Shading2:
-                flatFlag = true;
-                break;
-        }
         
         // send data to the object shader
         objectShader.setBool("flatFlag", flatFlag);
@@ -459,20 +422,11 @@ int main()
         // material properties
         objectShader.setVec3("material.specular", 0.5f, 0.5f, 0.5f); // specular lighting doesn't have full effect on this object's material
         objectShader.setFloat("material.shininess", shininess);
-        
-        // set culling face
-        glEnable( GL_CULL_FACE );
-        // set culling type
-        switch(cullingType)
-        {
-            case Culling1:
-                glFrontFace(GL_CCW);
-                break;
-            case Culling2:
-                glFrontFace(GL_CW);
-                break;
-        }
 
+        // enable culling face
+        glEnable(GL_CULL_FACE);
+        glFrontFace(GL_CCW);
+        
         // bind texture
         objectShader.setBool("diffuseMapFlag", diffuseMapFlag);
         objectShader.setBool("normalMapFlag", normalMapFlag);
@@ -482,15 +436,23 @@ int main()
         glBindTexture(GL_TEXTURE_2D, normalMap);
         
         // render object
+        // draw line instead of fill
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        
         glBindBuffer(GL_ARRAY_BUFFER, objectVBO);
         glBindVertexArray(objectVAO);
         glDrawArrays(GL_TRIANGLES, 0, (GLint)vertices.size());
+        
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         // draw the GUI
         screen->drawWidgets();
         
         // Swap the screen buffers
         glfwSwapBuffers(window);
+        
+        std::cout << "cameraUp: " << cameraUp.x << ", " << cameraUp.y << ", " << cameraUp.z << "\n";
+        std::cout << "cameraRight: " << cameraRight.x << ", " << cameraRight.y << ", " << cameraRight.z << "\n";
 
     }
     // Properly de-allocate all resources once they've outlived their purpose
@@ -724,4 +686,35 @@ void resetValues()
     cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
     lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
     dirLightDirection = glm::vec3(0.0f, -1.0f, -1.0f);
+}
+
+
+// transform vertices into view coordinates
+std::vector<glm::vec3> vertex_transform_view(GLfloat vertices[], int size, glm::mat4 modelView)
+{
+    float minZ;
+    float maxZ;
+    std::vector<glm::vec3> transformed;
+    for (int i = 0; i < size; i += 3)
+    {
+        glm::vec4 v = glm::vec4(vertices[i], vertices[i+1], vertices[i+2], 1.0f);
+        glm::vec3 transformed_v = glm::vec3(modelView*v);
+        std::cout << transformed_v.x << " " << transformed_v.y << " " << transformed_v.z << "\n";
+        transformed.push_back(transformed_v);
+        if (i == 0) {
+            minZ = transformed_v.z;
+            maxZ = transformed_v.z;
+        }
+        else {
+            if (transformed_v.z < minZ) {
+                minZ = transformed_v.z;
+            }
+            if (transformed_v.z > maxZ) {
+                maxZ = transformed_v.z;
+            }
+        }
+    }
+    std::cout << "min Z: " << minZ << "\n";
+    std::cout << "max Z: " << maxZ << "\n";
+    return transformed;
 }
