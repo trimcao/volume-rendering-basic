@@ -38,7 +38,9 @@ unsigned int loadTexture(const char *path);
 void computeTangent(std::vector<Vertex>&vertices);
 void setupDraw();
 void resetValues();
-std::vector<glm::vec3> vertex_transform_view(GLfloat vertices[], int size, glm::mat4 modelView);
+std::vector<glm::vec3> vertex_transform_view(GLfloat vertices[], int size, glm::mat4 modelView, float &min_depth, float &max_depth);
+glm::vec3 plane_line_intersect(glm::vec3 edge0, glm::vec3 edge1, glm::vec3 plane0, glm::vec3 normal);
+
 
 enum render_type {
     Render1 = 0,
@@ -361,21 +363,40 @@ int main()
         // projection matrix
         glm::mat4 projection = glm::perspective(glm::radians(viewDegree), (float)SCR_WIDTH / (float)SCR_HEIGHT, zNear, zFar);
         
-        
+    
         // test transforming vertices
         glm::mat4 modelView = view*model;
         //std::cout << "Size of cube vertices: " << sizeof(cube_vertices) / sizeof(*cube_vertices) << "\n";
-        std::vector<glm::vec3> transform = vertex_transform_view(cube_vertices, 24, modelView);
+        float min_depth = 0.0f;
+        float max_depth = 0.0f;
         
+        std::vector<glm::vec3> transform = vertex_transform_view(cube_vertices, 24, modelView, min_depth, max_depth);
+        
+        std::cout << "min depth: " << min_depth << "\n";
+        std::cout << "max depth: " << max_depth << "\n";
         
         for (int i = 0; i < 4; i++) {
-            std::cout << modelView[i].x << " " << modelView[i].y << " " << modelView[i].z << " " << modelView[i].w << "\n";
+            //std::cout << modelView[i].x << " " << modelView[i].y << " " << modelView[i].z << " " << modelView[i].w << "\n";
         }
         
         for (int i = 0; i < 8; i++) {
             //std::cout << transform[i].x << " " << transform[i].y << " " << transform[i].z << "\n";
         }
-        break;
+        
+        // generate sampling planes
+        float plane_dist = (max_depth - min_depth) / float(sampling_rate);
+        glm::vec3 normalVec = glm::normalize(glm::vec3(modelView * glm::vec4(cameraFront, 1.0f)));
+        std::cout << "Normal Vec (original): " << cameraFront.x << " " << cameraFront.y << " " << cameraFront.z << "\n";
+        std::cout << "Normal Vec: " << normalVec.x << " " << normalVec.y << " " << normalVec.z << "\n";
+        
+        for (int i = 0; i < 24; i+=2) {
+            //glm::vec3 test_intersect = plane_line_intersect(transform[i], transform[i+1], glm::vec3(0,0,-1.5), normalVec);
+            glm::vec3 test_intersect = plane_line_intersect(transform[i], transform[i+1], glm::vec3(0,0,-1.5), cameraFront);
+            std::cout << "test intersect for edge " << i/2 << ": " << test_intersect.x << " " << test_intersect.y << " " << test_intersect.z << "\n";
+        }
+        
+        
+//        break;
         
         
         // get matrix's uniform location and set matrices
@@ -451,8 +472,8 @@ int main()
         // Swap the screen buffers
         glfwSwapBuffers(window);
         
-        std::cout << "cameraUp: " << cameraUp.x << ", " << cameraUp.y << ", " << cameraUp.z << "\n";
-        std::cout << "cameraRight: " << cameraRight.x << ", " << cameraRight.y << ", " << cameraRight.z << "\n";
+        //std::cout << "cameraUp: " << cameraUp.x << ", " << cameraUp.y << ", " << cameraUp.z << "\n";
+        //std::cout << "cameraRight: " << cameraRight.x << ", " << cameraRight.y << ", " << cameraRight.z << "\n";
 
     }
     // Properly de-allocate all resources once they've outlived their purpose
@@ -690,11 +711,12 @@ void resetValues()
 
 
 // transform vertices into view coordinates
-std::vector<glm::vec3> vertex_transform_view(GLfloat vertices[], int size, glm::mat4 modelView)
+std::vector<glm::vec3> vertex_transform_view(GLfloat vertices[], int size, glm::mat4 modelView, float &min_depth, float &max_depth)
 {
     float minZ;
     float maxZ;
     std::vector<glm::vec3> transformed;
+    // transform each vertex from the vertices list.
     for (int i = 0; i < size; i += 3)
     {
         glm::vec4 v = glm::vec4(vertices[i], vertices[i+1], vertices[i+2], 1.0f);
@@ -714,7 +736,27 @@ std::vector<glm::vec3> vertex_transform_view(GLfloat vertices[], int size, glm::
             }
         }
     }
-    std::cout << "min Z: " << minZ << "\n";
-    std::cout << "max Z: " << maxZ << "\n";
+    // find the min and max depth for the sampling planes
+    min_depth = minZ;
+    max_depth = maxZ;
     return transformed;
+}
+
+
+glm::vec3 plane_line_intersect(glm::vec3 edge0, glm::vec3 edge1, glm::vec3 plane0, glm::vec3 normal)
+{
+    
+    float denominator = glm::dot(normal, edge1 - edge0);
+    float s_i = -1.0f;
+    if (denominator != 0) {
+        s_i =  glm::dot(normal, plane0 - edge0) / denominator;
+    }
+    if ((s_i >= 0) and (s_i <= 1)) {
+        return (edge0 + s_i * (edge1 - edge0));
+    }
+    else {
+        return glm::vec3(-99, -99, -99);
+    }
+    
+    
 }
