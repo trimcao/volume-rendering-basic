@@ -27,6 +27,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		B42C81D520810FCD0010E6A6 /* vol.fs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = vol.fs; sourceTree = "<group>"; };
+		B42C81D620810FCD0010E6A6 /* vol.vs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = vol.vs; sourceTree = "<group>"; };
+		B42C81D7208118500010E6A6 /* vol2.fs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = vol2.fs; sourceTree = "<group>"; };
+		B42C81D8208118500010E6A6 /* vol2.vs */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = vol2.vs; sourceTree = "<group>"; };
 		B4F0A3002079629500E56408 /* assignment4 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = assignment4; sourceTree = BUILT_PRODUCTS_DIR; };
 		B4F0A3032079629500E56408 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		B4F0A30B207962B500E56408 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
@@ -132,6 +136,10 @@
 		B4F0A31F2079647900E56408 /* shader */ = {
 			isa = PBXGroup;
 			children = (
+				B42C81D7208118500010E6A6 /* vol2.fs */,
+				B42C81D8208118500010E6A6 /* vol2.vs */,
+				B42C81D520810FCD0010E6A6 /* vol.fs */,
+				B42C81D620810FCD0010E6A6 /* vol.vs */,
 				B4F0A3202079647900E56408 /* object.fs */,
 				B4F0A3212079647900E56408 /* object.vs */,
 			);

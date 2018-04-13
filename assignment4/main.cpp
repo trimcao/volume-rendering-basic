@@ -86,7 +86,7 @@ std::string modelPath = "models/" + modelName + ".obj";
 std::string lastModelPath = modelPath;
 std::string lastModelName = modelName;
 render_type renderType = Render2;
-Color colval(0.3f, 0.5f, 1.0f, 1.0f);
+Color colval(0.4f, 0.6f, 1.0f, 1.0f);
 
 float shininess = 32.0f;
 bool pointLightFlag = false;
@@ -139,7 +139,7 @@ int main()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     
     // Create a GLFWwindow object
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Assignment 3", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Assignment 4", nullptr, nullptr);
     if (window == nullptr) {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -274,10 +274,10 @@ int main()
     glewInit();
     
     // Build and compile our shader program
-    Shader objectShader("shader/object.vs", "shader/object.fs");
+    Shader objectShader("shader/vol.vs", "shader/vol.fs");
     
     // setup the vertices and buffers
-    setupDraw();
+    //setupDraw();
     
     GLfloat cube_vertices[24] = {
         0.0, 0.0, 0.0,
@@ -320,11 +320,41 @@ int main()
         6,7
     };
     
+    unsigned int VBO, VAO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
+    glBindVertexArray(VAO);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
+    //glBufferData(GL_ARRAY_BUFFER, 24, cube_vertices, GL_STATIC_DRAW);
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cube_indices), cube_indices, GL_STATIC_DRAW);
+    //glBufferData(GL_ELEMENT_ARRAY_BUFFER, 36, cube_indices, GL_STATIC_DRAW);
+    
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
+    glEnableVertexAttribArray(0);
+    
+    // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+    // remember: do NOT unbind the EBO while a VAO is active as the bound element buffer object IS stored in the VAO; keep the EBO bound.
+    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    
+    // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
+    // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
+    glBindVertexArray(0);
+    
+    
+    cameraOrigin = glm::vec3(0.5, 0.5, 3.0);
+    
+    
     // shader configuration
     // --------------------
     objectShader.Use();
-    objectShader.setInt("material.diffuse", 0);
-    objectShader.setInt("normalMap", 1);
     
     // refresh the gui
     gui->refresh();
@@ -345,12 +375,11 @@ int main()
         if (lastModelName.compare(modelName) != 0)
         {
             resetValues();
-            setupDraw();
+            //setupDraw();
             // refresh the gui
             gui->refresh();
             gui2->refresh();
         }
-        //lastModelPath = modelPath;
         lastModelName = modelName;
 
         // update camera position and target
@@ -372,11 +401,11 @@ int main()
         
         std::vector<glm::vec3> transform = vertex_transform_view(cube_vertices, 24, modelView, min_depth, max_depth);
         
-        std::cout << "min depth: " << min_depth << "\n";
-        std::cout << "max depth: " << max_depth << "\n";
+        //std::cout << "min depth: " << min_depth << "\n";
+        //std::cout << "max depth: " << max_depth << "\n";
         
         for (int i = 0; i < 4; i++) {
-            //std::cout << modelView[i].x << " " << modelView[i].y << " " << modelView[i].z << " " << modelView[i].w << "\n";
+            std::cout << modelView[i].x << " " << modelView[i].y << " " << modelView[i].z << " " << modelView[i].w << "\n";
         }
         
         for (int i = 0; i < 8; i++) {
@@ -390,13 +419,13 @@ int main()
         std::cout << "Normal Vec: " << normalVec.x << " " << normalVec.y << " " << normalVec.z << "\n";
         
         for (int i = 0; i < 24; i+=2) {
-            //glm::vec3 test_intersect = plane_line_intersect(transform[i], transform[i+1], glm::vec3(0,0,-1.5), normalVec);
+            //glm::vec3 test_intersect = plane_line_intersect(transform[i], transform[i+1], glm::vec3(0,0,-2.5), normalVec);
             glm::vec3 test_intersect = plane_line_intersect(transform[i], transform[i+1], glm::vec3(0,0,-1.5), cameraFront);
             std::cout << "test intersect for edge " << i/2 << ": " << test_intersect.x << " " << test_intersect.y << " " << test_intersect.z << "\n";
         }
         
         
-//        break;
+        //break;
         
         
         // get matrix's uniform location and set matrices
@@ -407,62 +436,24 @@ int main()
         objectShader.setMat4("view", view);
         objectShader.setMat4("projection", projection);
         
-        // set shading type: smooth vs flat shading.
-        bool flatFlag = false;
+        glm::vec4 myColor = glm::vec4(colval[0], colval[1], colval[2], colval[3]);
+        objectShader.setVec4("ourColor", myColor);
         
-        // send data to the object shader
-        objectShader.setBool("flatFlag", flatFlag);
-        objectShader.setBool("dirLightFlag", dirLightFlag);
-        objectShader.setBool("pointLightFlag", pointLightFlag);
-        objectShader.setVec3("pointLight.position", lightPos);
-        objectShader.setVec3("lightPos", lightPos);
-        objectShader.setVec3("viewPos", viewPos);
-        
-        // set point light attributes
-        glm::vec3 lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
-        glm::vec3 pointDiffuseColor = glm::vec3(pointLightDiffuse[0], pointLightDiffuse[1], pointLightDiffuse[2]);
-        glm::vec3 pointAmbientColor = glm::vec3(pointLightAmbient[0], pointLightAmbient[1], pointLightAmbient[2]);
-        glm::vec3 pointSpecularColor = glm::vec3(pointLightSpecular[0], pointLightSpecular[1], pointLightSpecular[2]);
-        objectShader.setVec3("pointLight.ambient", pointAmbientColor);
-        objectShader.setVec3("pointLight.diffuse", pointDiffuseColor);
-        objectShader.setVec3("pointLight.specular", pointSpecularColor);
-        
-        // set Directional Light attributes
-        dirLightDirection = glm::vec3(dirLightX, dirLightY, dirLightZ);
-        glm::vec3 lightDir = camToWorld(dirLightDirection, cameraOrigin, cameraRight, cameraUp, cameraFront);
-        glm::vec3 dirDiffuseColor = glm::vec3(dirLightDiffuse[0], dirLightDiffuse[1], dirLightDiffuse[2]);
-        glm::vec3 dirAmbientColor = glm::vec3(dirLightAmbient[0], dirLightAmbient[1], dirLightAmbient[2]);
-        glm::vec3 dirSpecularColor = glm::vec3(dirLightSpecular[0], dirLightSpecular[1], dirLightSpecular[2]);
-        objectShader.setVec3("dirLight.direction", lightDir);
-        objectShader.setVec3("dirLight.ambient", dirAmbientColor);
-        objectShader.setVec3("dirLight.diffuse", dirDiffuseColor);
-        objectShader.setVec3("dirLight.specular", dirSpecularColor);
-        
-        // object color
-        // glm::vec4 myColor = glm::vec4(colval[0], colval[1], colval[2], colval[3]);
-        // material properties
-        objectShader.setVec3("material.specular", 0.5f, 0.5f, 0.5f); // specular lighting doesn't have full effect on this object's material
-        objectShader.setFloat("material.shininess", shininess);
-
         // enable culling face
-        glEnable(GL_CULL_FACE);
-        glFrontFace(GL_CCW);
-        
-        // bind texture
-        objectShader.setBool("diffuseMapFlag", diffuseMapFlag);
-        objectShader.setBool("normalMapFlag", normalMapFlag);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, diffuseMap);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, normalMap);
+        //glEnable(GL_CULL_FACE);
+        //glFrontFace(GL_CCW);
         
         // render object
         // draw line instead of fill
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         
-        glBindBuffer(GL_ARRAY_BUFFER, objectVBO);
-        glBindVertexArray(objectVAO);
-        glDrawArrays(GL_TRIANGLES, 0, (GLint)vertices.size());
+        glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
+        //glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        
+        //glBindBuffer(GL_ARRAY_BUFFER, objectVBO);
+        //glBindVertexArray(objectVAO);
+        //glDrawArrays(GL_TRIANGLES, 0, (GLint)vertices.size());
         
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
@@ -472,8 +463,6 @@ int main()
         // Swap the screen buffers
         glfwSwapBuffers(window);
         
-        //std::cout << "cameraUp: " << cameraUp.x << ", " << cameraUp.y << ", " << cameraUp.z << "\n";
-        //std::cout << "cameraRight: " << cameraRight.x << ", " << cameraRight.y << ", " << cameraRight.z << "\n";
 
     }
     // Properly de-allocate all resources once they've outlived their purpose
@@ -757,6 +746,4 @@ glm::vec3 plane_line_intersect(glm::vec3 edge0, glm::vec3 edge1, glm::vec3 plane
     else {
         return glm::vec3(-99, -99, -99);
     }
-    
-    
 }
