@@ -405,11 +405,11 @@ int main()
         //std::cout << "max depth: " << max_depth << "\n";
         
         for (int i = 0; i < 4; i++) {
-            std::cout << modelView[i].x << " " << modelView[i].y << " " << modelView[i].z << " " << modelView[i].w << "\n";
+            //std::cout << modelView[i].x << " " << modelView[i].y << " " << modelView[i].z << " " << modelView[i].w << "\n";
         }
         
         for (int i = 0; i < 8; i++) {
-            //std::cout << transform[i].x << " " << transform[i].y << " " << transform[i].z << "\n";
+            std::cout << transform[i].x << " " << transform[i].y << " " << transform[i].z << "\n";
         }
         
         // generate sampling planes
@@ -418,9 +418,21 @@ int main()
         std::cout << "Normal Vec (original): " << cameraFront.x << " " << cameraFront.y << " " << cameraFront.z << "\n";
         std::cout << "Normal Vec: " << normalVec.x << " " << normalVec.y << " " << normalVec.z << "\n";
         
+        normalVec = glm::vec3(0.0, 0.0, -1.0);
+        
+        glm::vec3 test_intersect(0, 0, 0);
         for (int i = 0; i < 24; i+=2) {
-            //glm::vec3 test_intersect = plane_line_intersect(transform[i], transform[i+1], glm::vec3(0,0,-2.5), normalVec);
-            glm::vec3 test_intersect = plane_line_intersect(transform[i], transform[i+1], glm::vec3(0,0,-1.5), cameraFront);
+            if (transform[i].z > transform[i+1].z) {
+                test_intersect = plane_line_intersect(transform[i], transform[i+1], glm::vec3(0,0,max_depth-0.2), normalVec);
+                //test_intersect = plane_line_intersect(transform[i], transform[i+1], glm::vec3(0,0,-2.5), cameraFront);
+                
+            }
+            else {
+                test_intersect = plane_line_intersect(transform[i+1], transform[i], glm::vec3(0,0,max_depth-0.2), normalVec);
+                //test_intersect = plane_line_intersect(transform[i+1], transform[i], glm::vec3(0,0,-2.5), cameraFront);
+            }
+            
+            //test_intersect = plane_line_intersect(transform[i], transform[i+1], glm::vec3(0,0,-2.5), cameraFront);
             std::cout << "test intersect for edge " << i/2 << ": " << test_intersect.x << " " << test_intersect.y << " " << test_intersect.z << "\n";
         }
         
@@ -710,7 +722,7 @@ std::vector<glm::vec3> vertex_transform_view(GLfloat vertices[], int size, glm::
     {
         glm::vec4 v = glm::vec4(vertices[i], vertices[i+1], vertices[i+2], 1.0f);
         glm::vec3 transformed_v = glm::vec3(modelView*v);
-        std::cout << transformed_v.x << " " << transformed_v.y << " " << transformed_v.z << "\n";
+        //std::cout << transformed_v.x << " " << transformed_v.y << " " << transformed_v.z << "\n";
         transformed.push_back(transformed_v);
         if (i == 0) {
             minZ = transformed_v.z;
@@ -734,13 +746,13 @@ std::vector<glm::vec3> vertex_transform_view(GLfloat vertices[], int size, glm::
 
 glm::vec3 plane_line_intersect(glm::vec3 edge0, glm::vec3 edge1, glm::vec3 plane0, glm::vec3 normal)
 {
-    
     float denominator = glm::dot(normal, edge1 - edge0);
     float s_i = -1.0f;
-    if (denominator != 0) {
+    if (glm::abs(denominator) > 0.0001) {
         s_i =  glm::dot(normal, plane0 - edge0) / denominator;
+        std::cout << "s_i: " << s_i << "\n";
     }
-    if ((s_i >= 0) and (s_i <= 1)) {
+    if ((s_i > 0.0001) and (s_i < 0.9999)) {
         return (edge0 + s_i * (edge1 - edge0));
     }
     else {
