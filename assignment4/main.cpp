@@ -40,6 +40,7 @@ void setupDraw();
 void resetValues();
 std::vector<glm::vec3> vertex_transform_view(GLfloat vertices[], int size, glm::mat4 modelView, float &min_depth, float &max_depth);
 glm::vec3 plane_line_intersect(glm::vec3 edge0, glm::vec3 edge1, glm::vec3 plane0, glm::vec3 normal);
+void intersect_triangles_per_plane(glm::vec3 plane0, glm::vec3 normal, std::vector<glm::vec3> vertices, GLuint edges[], int num_edges);
 
 
 enum render_type {
@@ -413,31 +414,15 @@ int main()
         }
         
         // generate sampling planes
-        float plane_dist = (max_depth - min_depth) / float(sampling_rate);
-        glm::vec3 normalVec = glm::normalize(glm::vec3(modelView * glm::vec4(cameraFront, 1.0f)));
-        std::cout << "Normal Vec (original): " << cameraFront.x << " " << cameraFront.y << " " << cameraFront.z << "\n";
-        std::cout << "Normal Vec: " << normalVec.x << " " << normalVec.y << " " << normalVec.z << "\n";
+        float plane_dist = 1 / float(sampling_rate);
         
-        normalVec = glm::vec3(0.0, 0.0, -1.0);
+        glm::vec3 normalVec = glm::vec3(0.0, 0.0, -1.0);
         
-        glm::vec3 test_intersect(0, 0, 0);
-        for (int i = 0; i < 24; i+=2) {
-            if (transform[i].z > transform[i+1].z) {
-                test_intersect = plane_line_intersect(transform[i], transform[i+1], glm::vec3(0,0,max_depth-0.2), normalVec);
-                //test_intersect = plane_line_intersect(transform[i], transform[i+1], glm::vec3(0,0,-2.5), cameraFront);
-                
-            }
-            else {
-                test_intersect = plane_line_intersect(transform[i+1], transform[i], glm::vec3(0,0,max_depth-0.2), normalVec);
-                //test_intersect = plane_line_intersect(transform[i+1], transform[i], glm::vec3(0,0,-2.5), cameraFront);
-            }
-            
-            //test_intersect = plane_line_intersect(transform[i], transform[i+1], glm::vec3(0,0,-2.5), cameraFront);
-            std::cout << "test intersect for edge " << i/2 << ": " << test_intersect.x << " " << test_intersect.y << " " << test_intersect.z << "\n";
+        for (float d = max_depth; d >= min_depth; d -= plane_dist) {
+            intersect_triangles_per_plane(glm::vec3(0.0,0.0,d), normalVec, transform, cube_edges, 24);
         }
         
-        
-        //break;
+        break;
         
         
         // get matrix's uniform location and set matrices
@@ -744,6 +729,8 @@ std::vector<glm::vec3> vertex_transform_view(GLfloat vertices[], int size, glm::
 }
 
 
+// compute the intersect point for plane vs edge.
+// ----------------------------------------------
 glm::vec3 plane_line_intersect(glm::vec3 edge0, glm::vec3 edge1, glm::vec3 plane0, glm::vec3 normal)
 {
     float denominator = glm::dot(normal, edge1 - edge0);
@@ -759,3 +746,27 @@ glm::vec3 plane_line_intersect(glm::vec3 edge0, glm::vec3 edge1, glm::vec3 plane
         return glm::vec3(-99, -99, -99);
     }
 }
+
+// find the intersection points between the plane and all the edges
+// then tesellate them into triangles.
+// ------------------------------------------------------------
+void intersect_triangles_per_plane(glm::vec3 plane0, glm::vec3 normal, std::vector<glm::vec3> vertices, GLuint edges[], int num_edges)
+{
+    std::vector<glm::vec3> points;
+    glm::vec3 test_intersect(0, 0, 0);
+    for (int i = 0; i < num_edges; i+=2) {
+        if (vertices[edges[i]].z > vertices[edges[i+1]].z) {
+            points.push_back(plane_line_intersect(vertices[edges[i]], vertices[edges[i+1]], plane0, normal));
+            
+        }
+        else {
+            points.push_back(plane_line_intersect(vertices[edges[i+1]], vertices[edges[i]], plane0, normal));
+        }
+        
+        test_intersect = points[i/2];
+        std::cout << "test intersect for edge " << i/2 << ": " << test_intersect.x << " " << test_intersect.y << " " << test_intersect.z << "\n";
+    }
+    std::cout << "\n\n";
+    return;
+}
+ 
