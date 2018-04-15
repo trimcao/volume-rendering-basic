@@ -41,7 +41,9 @@ void resetValues();
 std::vector<glm::vec3> vertex_transform_view(GLfloat vertices[], int size, glm::mat4 modelView, float &min_depth, float &max_depth);
 glm::vec3 plane_line_intersect(glm::vec3 edge0, glm::vec3 edge1, glm::vec3 plane0, glm::vec3 normal);
 void intersect_triangles_per_plane(glm::vec3 plane0, glm::vec3 normal, std::vector<glm::vec3> vertices, GLuint edges[], int num_edges);
-
+glm::vec3 find_centroid(std::vector<glm::vec3> points);
+bool less(glm::vec3 a, glm::vec3 b, glm::vec3 center);
+void insertion_sort(std::vector<glm::vec3> &points, glm::vec3 center);
 
 enum render_type {
     Render1 = 0,
@@ -418,9 +420,13 @@ int main()
         
         glm::vec3 normalVec = glm::vec3(0.0, 0.0, -1.0);
         
+        /*
         for (float d = max_depth; d >= min_depth; d -= plane_dist) {
             intersect_triangles_per_plane(glm::vec3(0.0,0.0,d), normalVec, transform, cube_edges, 24);
         }
+         */
+        
+        intersect_triangles_per_plane(glm::vec3(0.0,0.0,max_depth-0.2), normalVec, transform, cube_edges, 24);
         
         break;
         
@@ -755,18 +761,99 @@ void intersect_triangles_per_plane(glm::vec3 plane0, glm::vec3 normal, std::vect
     std::vector<glm::vec3> points;
     glm::vec3 test_intersect(0, 0, 0);
     for (int i = 0; i < num_edges; i+=2) {
-        if (vertices[edges[i]].z > vertices[edges[i+1]].z) {
-            points.push_back(plane_line_intersect(vertices[edges[i]], vertices[edges[i+1]], plane0, normal));
+        if (vertices[edges[i]].z >= vertices[edges[i+1]].z) {
+            test_intersect = plane_line_intersect(vertices[edges[i]], vertices[edges[i+1]], plane0, normal);
             
         }
         else {
-            points.push_back(plane_line_intersect(vertices[edges[i+1]], vertices[edges[i]], plane0, normal));
+            test_intersect = plane_line_intersect(vertices[edges[i+1]], vertices[edges[i]], plane0, normal);
         }
         
-        test_intersect = points[i/2];
-        std::cout << "test intersect for edge " << i/2 << ": " << test_intersect.x << " " << test_intersect.y << " " << test_intersect.z << "\n";
+        //std::cout << "test intersect for edge " << i/2 << ": " << test_intersect.x << " " << test_intersect.y << " " << test_intersect.z << "\n";
+        
+        if (glm::all(glm::notEqual(test_intersect, glm::vec3(-99,-99,-99)))) {
+            points.push_back(glm::vec3(test_intersect));
+            std::cout << "test intersect for edge " << i/2 << ": " << test_intersect.x << " " << test_intersect.y << " " << test_intersect.z << "\n";
+        }
     }
+    // find the centroid of the intersections
+    glm::vec3 centroid = find_centroid(points);
+    std::cout << "centroid: " << centroid.x << " " << centroid.y << " " << centroid.z << "\n";
+    
+    // sort points
+    std::cout << less(points[0], points[1], centroid) << "\n";
+    std::cout << less(points[1], points[0], centroid) << "\n";
+    std::cout << less(points[3], points[1], centroid) << "\n";
+    //std::cout << less(points[0], points[1], centroid) << "\n";
+    
+    for (int i = 0; i < points.size(); i++) {
+        std::cout << "points " << i << ": " << points[i].x << " " << points[i].y << " " << points[i].z << "\n";
+    }
+    insertion_sort(points, centroid);
+    std::cout << "after sorting" << "\n";
+    for (int i = 0; i < points.size(); i++) {
+        std::cout << "points " << i << ": " << points[i].x << " " << points[i].y << " " << points[i].z << "\n";
+    }
+    
+    
+    
     std::cout << "\n\n";
     return;
 }
- 
+
+
+// compute the 2D centroid of the points
+glm::vec3 find_centroid(std::vector<glm::vec3> points)
+{
+    float center_x = 0.0f;
+    float center_y = 0.0f;
+    float center_z = points[0].z;
+    for (int i = 0; i < points.size(); i++) {
+        center_x += points[i].x;
+        center_y += points[i].y;
+    }
+    center_x = center_x / points.size();
+    center_y = center_y / points.size();
+    return glm::vec3(center_x, center_y, center_z);
+}
+
+
+// helper method to sort points clockwise/counter-clockwise on a polygon
+bool less(glm::vec3 a, glm::vec3 b, glm::vec3 center)
+{
+    if ((a.x - center.x >= 0) && (b.x - center.x < 0))
+        return true;
+    if ((a.x - center.x < 0) && (b.x - center.x >= 0))
+        return false;
+    if ((a.x - center.x == 0) && (b.x - center.x == 0)) {
+        if ((a.y - center.y >= 0) || (b.y - center.y >= 0))
+            return a.y > b.y;
+        return b.y > a.y;
+    }
+    
+    // compute the cross product of vectors (center -> a) x (center -> b)
+    float det = (a.x - center.x) * (b.y - center.y) - (b.x - center.x) * (a.y - center.y);
+    if (det < 0)
+        return true;
+    if (det > 0)
+        return false;
+    
+    // points a and b are on the same line from the center
+    // check which point is closer to the center
+    float d1 = (a.x - center.x) * (a.x - center.x) + (a.y - center.y) * (a.y - center.y);
+    float d2 = (b.x - center.x) * (b.x - center.x) + (b.y - center.y) * (b.y - center.y);
+    return d1 > d2;
+}
+
+// insertion sort algorithm
+void insertion_sort(std::vector<glm::vec3> &points, glm::vec3 center) {
+    int i, j;
+    for (i = 1; i < points.size(); i++) {
+        glm::vec3 temp(points[i]);
+        for (j = i; j > 0 && !less(points[j-1], temp, center); j--) {
+            points[j] = points[j-1];
+        }
+        points[j] = temp;
+    }
+}
+
