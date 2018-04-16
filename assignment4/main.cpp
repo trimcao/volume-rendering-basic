@@ -372,66 +372,47 @@ int main()
     
         // test transforming vertices
         glm::mat4 modelView = view*model;
-        //std::cout << "Size of cube vertices: " << sizeof(cube_vertices) / sizeof(*cube_vertices) << "\n";
+        glm::mat4 modelViewInverse = glm::inverse(modelView);
+        
         float min_depth = 0.0f;
         float max_depth = 0.0f;
         
         std::vector<glm::vec3> transform = vertex_transform_view(cube_vertices, 24, modelView, min_depth, max_depth);
         
-        //std::cout << "min depth: " << min_depth << "\n";
-        //std::cout << "max depth: " << max_depth << "\n";
-        
-        for (int i = 0; i < 4; i++) {
-            //std::cout << modelView[i].x << " " << modelView[i].y << " " << modelView[i].z << " " << modelView[i].w << "\n";
-        }
-        
-        for (int i = 0; i < 8; i++) {
-            std::cout << transform[i].x << " " << transform[i].y << " " << transform[i].z << "\n";
-        }
-        
         // generate sampling planes
         float plane_dist = 1 / float(sampling_rate);
-        
         glm::vec3 normalVec = glm::vec3(0.0, 0.0, -1.0);
-        
-        /*
-        for (float d = max_depth; d >= min_depth; d -= plane_dist) {
-            intersect_triangles_per_plane(glm::vec3(0.0,0.0,d), normalVec, transform, cube_edges, 24);
-        }
-         */
-        
-        std::vector<glm::vec3> intersects = intersect_points_per_plane(glm::vec3(0.0,0.0,max_depth-0.2), normalVec, transform, cube_edges, 24);
-        
-        // transform vertices back to object space
-        glm::mat4 modelViewInverse = glm::inverse(modelView);
-        // generate vertices positions and triangle indices
+        int num_planes = (max_depth - min_depth) / plane_dist - 1;
+        std::cout << num_planes << "\n";
+
         std::vector<float> vertices_draw;
         std::vector<unsigned int> indices_draw;
-        gen_pos_indices(intersects, vertices_draw, indices_draw, modelViewInverse);
-        std::cout << "number of indices: " << indices_draw.size() << "\n";
         
-        unsigned int VBO, VAO, EBO;
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-        glGenBuffers(1, &EBO);
-        // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-        glBindVertexArray(VAO);
-        
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, vertices_draw.size() * sizeof(float), vertices_draw.data(), GL_STATIC_DRAW);
-        
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_draw.size() * sizeof(unsigned int), indices_draw.data(), GL_STATIC_DRAW);
-        
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-        
-        // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        
-        // remember: do NOT unbind the EBO while a VAO is active as the bound element buffer object IS stored in the VAO; keep the EBO bound.
-        //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
+        float d = max_depth; // denote the current depth of the sampling plane
+        unsigned int VBOs[num_planes], VAOs[num_planes], EBOs[num_planes];
+        glGenVertexArrays(num_planes, VAOs); // we can also generate multiple VAOs or buffers at the same time
+        glGenBuffers(num_planes, VBOs);
+        glGenBuffers(num_planes, EBOs);
+        // setup the data for all the planes
+        //for (int i = 0; i < num_planes; i++) {
+        for (int i = 0; i < num_planes; i++) {
+            d = d - plane_dist;
+            std::cout << "d: " << d << "\n";
+            std::vector<glm::vec3> intersects = intersect_points_per_plane(glm::vec3(0.0,0.0,d), normalVec, transform, cube_edges, 24);
+            // generate vertices positions (in object space) and triangle indices
+            vertices_draw.clear();
+            indices_draw.clear();
+            gen_pos_indices(intersects, vertices_draw, indices_draw, modelViewInverse);
+            
+            // setup triangles for the current sampling plane
+            glBindVertexArray(VAOs[i]);
+            glBindBuffer(GL_ARRAY_BUFFER, VBOs[i]);
+            glBufferData(GL_ARRAY_BUFFER, vertices_draw.size() * sizeof(float), vertices_draw.data(), GL_STATIC_DRAW);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBOs[i]);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_draw.size() * sizeof(unsigned int), indices_draw.data(), GL_STATIC_DRAW);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(0);
+        }
         
         
         // get matrix's uniform location and set matrices
@@ -453,16 +434,13 @@ int main()
         // draw line instead of fill
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         
-        glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
-        //glDrawArrays(GL_TRIANGLES, 0, 6);
-        glDrawElements(GL_TRIANGLES, indices_draw.size(), GL_UNSIGNED_INT, 0);
-        
-        //glBindBuffer(GL_ARRAY_BUFFER, objectVBO);
-        //glBindVertexArray(objectVAO);
-        //glDrawArrays(GL_TRIANGLES, 0, (GLint)vertices.size());
+        for (int i = 0; i < num_planes; i++) {
+            glBindVertexArray(VAOs[i]);
+            //glDrawArrays(GL_TRIANGLES, 0, 6);
+            glDrawElements(GL_TRIANGLES, indices_draw.size(), GL_UNSIGNED_INT, 0);
+        }
         
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        
          
         // draw the GUI
         screen->drawWidgets();
@@ -717,7 +695,6 @@ std::vector<glm::vec3> vertex_transform_view(GLfloat vertices[], int size, glm::
     {
         glm::vec4 v = glm::vec4(vertices[i], vertices[i+1], vertices[i+2], 1.0f);
         glm::vec3 transformed_v = glm::vec3(modelView*v);
-        //std::cout << transformed_v.x << " " << transformed_v.y << " " << transformed_v.z << "\n";
         transformed.push_back(transformed_v);
         if (i == 0) {
             minZ = transformed_v.z;
@@ -747,7 +724,7 @@ glm::vec3 plane_line_intersect(glm::vec3 edge0, glm::vec3 edge1, glm::vec3 plane
     float s_i = -1.0f;
     if (glm::abs(denominator) > 0.0001) {
         s_i =  glm::dot(normal, plane0 - edge0) / denominator;
-        std::cout << "s_i: " << s_i << "\n";
+        //std::cout << "s_i: " << s_i << "\n";
     }
     if ((s_i > 0.0001) and (s_i < 0.9999)) {
         return (edge0 + s_i * (edge1 - edge0));
@@ -766,33 +743,28 @@ std::vector<glm::vec3> intersect_points_per_plane(glm::vec3 plane0, glm::vec3 no
     for (int i = 0; i < num_edges; i+=2) {
         if (vertices[edges[i]].z >= vertices[edges[i+1]].z) {
             test_intersect = plane_line_intersect(vertices[edges[i]], vertices[edges[i+1]], plane0, normal);
-            
         }
         else {
             test_intersect = plane_line_intersect(vertices[edges[i+1]], vertices[edges[i]], plane0, normal);
         }
-        
-        //std::cout << "test intersect for edge " << i/2 << ": " << test_intersect.x << " " << test_intersect.y << " " << test_intersect.z << "\n";
-        
         if (glm::all(glm::notEqual(test_intersect, glm::vec3(-99,-99,-99)))) {
             points.push_back(glm::vec3(test_intersect));
-            std::cout << "test intersect for edge " << i/2 << ": " << test_intersect.x << " " << test_intersect.y << " " << test_intersect.z << "\n";
+            //std::cout << "test intersect for edge " << i/2 << ": " << test_intersect.x << " " << test_intersect.y << " " << test_intersect.z << "\n";
         }
     }
     // find the centroid of the intersections
     glm::vec3 centroid = find_centroid(points);
-    std::cout << "centroid: " << centroid.x << " " << centroid.y << " " << centroid.z << "\n";
-    
     // sort points
     insertion_sort(points, centroid);
-    
     // insert the centroid point
     points.insert(points.begin(), centroid);
+    /*
     std::cout << "after sorting" << "\n";
     for (int i = 0; i < points.size(); i++) {
         std::cout << "points " << i << ": " << points[i].x << " " << points[i].y << " " << points[i].z << "\n";
     }
     std::cout << "\n\n";
+    */
     return points;
 }
 
