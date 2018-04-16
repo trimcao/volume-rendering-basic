@@ -40,10 +40,12 @@ void setupDraw();
 void resetValues();
 std::vector<glm::vec3> vertex_transform_view(GLfloat vertices[], int size, glm::mat4 modelView, float &min_depth, float &max_depth);
 glm::vec3 plane_line_intersect(glm::vec3 edge0, glm::vec3 edge1, glm::vec3 plane0, glm::vec3 normal);
-void intersect_triangles_per_plane(glm::vec3 plane0, glm::vec3 normal, std::vector<glm::vec3> vertices, GLuint edges[], int num_edges);
+std::vector<glm::vec3> intersect_points_per_plane(glm::vec3 plane0, glm::vec3 normal, std::vector<glm::vec3> vertices, GLuint edges[], int num_edges);
 glm::vec3 find_centroid(std::vector<glm::vec3> points);
 bool less(glm::vec3 a, glm::vec3 b, glm::vec3 center);
 void insertion_sort(std::vector<glm::vec3> &points, glm::vec3 center);
+void gen_pos_indices(std::vector<glm::vec3> &original_pos, std::vector<float> &positions, std::vector<unsigned int> &indices, glm::mat4 &matrix);
+
 
 enum render_type {
     Render1 = 0,
@@ -323,34 +325,6 @@ int main()
         6,7
     };
     
-    unsigned int VBO, VAO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-    glBindVertexArray(VAO);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
-    //glBufferData(GL_ARRAY_BUFFER, 24, cube_vertices, GL_STATIC_DRAW);
-    
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cube_indices), cube_indices, GL_STATIC_DRAW);
-    //glBufferData(GL_ELEMENT_ARRAY_BUFFER, 36, cube_indices, GL_STATIC_DRAW);
-    
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
-    glEnableVertexAttribArray(0);
-    
-    // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    
-    // remember: do NOT unbind the EBO while a VAO is active as the bound element buffer object IS stored in the VAO; keep the EBO bound.
-    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    
-    // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
-    // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
-    glBindVertexArray(0);
-    
     
     cameraOrigin = glm::vec3(0.5, 0.5, 3.0);
     
@@ -426,9 +400,38 @@ int main()
         }
          */
         
-        intersect_triangles_per_plane(glm::vec3(0.0,0.0,max_depth-0.2), normalVec, transform, cube_edges, 24);
+        std::vector<glm::vec3> intersects = intersect_points_per_plane(glm::vec3(0.0,0.0,max_depth-0.2), normalVec, transform, cube_edges, 24);
         
-        break;
+        // transform vertices back to object space
+        glm::mat4 modelViewInverse = glm::inverse(modelView);
+        // generate vertices positions and triangle indices
+        std::vector<float> vertices_draw;
+        std::vector<unsigned int> indices_draw;
+        gen_pos_indices(intersects, vertices_draw, indices_draw, modelViewInverse);
+        std::cout << "number of indices: " << indices_draw.size() << "\n";
+        
+        unsigned int VBO, VAO, EBO;
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
+        // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
+        glBindVertexArray(VAO);
+        
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, vertices_draw.size() * sizeof(float), vertices_draw.data(), GL_STATIC_DRAW);
+        
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_draw.size() * sizeof(unsigned int), indices_draw.data(), GL_STATIC_DRAW);
+        
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        
+        // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        
+        // remember: do NOT unbind the EBO while a VAO is active as the bound element buffer object IS stored in the VAO; keep the EBO bound.
+        //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
         
         
         // get matrix's uniform location and set matrices
@@ -448,18 +451,19 @@ int main()
         
         // render object
         // draw line instead of fill
-        //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         
         glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
         //glDrawArrays(GL_TRIANGLES, 0, 6);
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, indices_draw.size(), GL_UNSIGNED_INT, 0);
         
         //glBindBuffer(GL_ARRAY_BUFFER, objectVBO);
         //glBindVertexArray(objectVAO);
         //glDrawArrays(GL_TRIANGLES, 0, (GLint)vertices.size());
         
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
+        
+         
         // draw the GUI
         screen->drawWidgets();
         
@@ -754,9 +758,8 @@ glm::vec3 plane_line_intersect(glm::vec3 edge0, glm::vec3 edge1, glm::vec3 plane
 }
 
 // find the intersection points between the plane and all the edges
-// then tesellate them into triangles.
 // ------------------------------------------------------------
-void intersect_triangles_per_plane(glm::vec3 plane0, glm::vec3 normal, std::vector<glm::vec3> vertices, GLuint edges[], int num_edges)
+std::vector<glm::vec3> intersect_points_per_plane(glm::vec3 plane0, glm::vec3 normal, std::vector<glm::vec3> vertices, GLuint edges[], int num_edges)
 {
     std::vector<glm::vec3> points;
     glm::vec3 test_intersect(0, 0, 0);
@@ -781,24 +784,16 @@ void intersect_triangles_per_plane(glm::vec3 plane0, glm::vec3 normal, std::vect
     std::cout << "centroid: " << centroid.x << " " << centroid.y << " " << centroid.z << "\n";
     
     // sort points
-    std::cout << less(points[0], points[1], centroid) << "\n";
-    std::cout << less(points[1], points[0], centroid) << "\n";
-    std::cout << less(points[3], points[1], centroid) << "\n";
-    //std::cout << less(points[0], points[1], centroid) << "\n";
-    
-    for (int i = 0; i < points.size(); i++) {
-        std::cout << "points " << i << ": " << points[i].x << " " << points[i].y << " " << points[i].z << "\n";
-    }
     insertion_sort(points, centroid);
+    
+    // insert the centroid point
+    points.insert(points.begin(), centroid);
     std::cout << "after sorting" << "\n";
     for (int i = 0; i < points.size(); i++) {
         std::cout << "points " << i << ": " << points[i].x << " " << points[i].y << " " << points[i].z << "\n";
     }
-    
-    
-    
     std::cout << "\n\n";
-    return;
+    return points;
 }
 
 
@@ -830,14 +825,12 @@ bool less(glm::vec3 a, glm::vec3 b, glm::vec3 center)
             return a.y > b.y;
         return b.y > a.y;
     }
-    
     // compute the cross product of vectors (center -> a) x (center -> b)
     float det = (a.x - center.x) * (b.y - center.y) - (b.x - center.x) * (a.y - center.y);
     if (det < 0)
         return true;
     if (det > 0)
         return false;
-    
     // points a and b are on the same line from the center
     // check which point is closer to the center
     float d1 = (a.x - center.x) * (a.x - center.x) + (a.y - center.y) * (a.y - center.y);
@@ -854,6 +847,30 @@ void insertion_sort(std::vector<glm::vec3> &points, glm::vec3 center) {
             points[j] = points[j-1];
         }
         points[j] = temp;
+    }
+}
+
+// generate the vertices positions in object space, and indices for EBO
+void gen_pos_indices(std::vector<glm::vec3> &original_pos, std::vector<float> &positions, std::vector<unsigned int> &indices, glm::mat4 &matrix)
+{
+    // positions
+    for (int i = 0; i < original_pos.size(); i++) {
+        original_pos[i] = glm::vec3(matrix * glm::vec4(original_pos[i], 1.0));
+        positions.push_back(original_pos[i].x);
+        positions.push_back(original_pos[i].y);
+        positions.push_back(original_pos[i].z);
+    }
+    // indices
+    for (int i = 1; i < original_pos.size(); i++) {
+        indices.push_back(0);
+        if (i == original_pos.size() - 1) {
+            indices.push_back(original_pos.size() - 1);
+            indices.push_back(1);
+        }
+        else {
+            indices.push_back(i);
+            indices.push_back(i + 1);
+        }
     }
 }
 
