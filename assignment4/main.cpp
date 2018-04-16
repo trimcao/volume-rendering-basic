@@ -45,7 +45,7 @@ glm::vec3 find_centroid(std::vector<glm::vec3> points);
 bool less(glm::vec3 a, glm::vec3 b, glm::vec3 center);
 void insertion_sort(std::vector<glm::vec3> &points, glm::vec3 center);
 void gen_pos_indices(std::vector<glm::vec3> &original_pos, std::vector<float> &positions, std::vector<unsigned int> &indices, glm::mat4 &matrix);
-
+GLubyte * load_3d_raw_data(std::string texture_path, glm::vec3 dimension);
 
 enum render_type {
     Render1 = 0,
@@ -58,7 +58,7 @@ enum render_type {
 const GLuint SCR_WIDTH = 1024, SCR_HEIGHT = 768;
 
 // sampling rate
-int sampling_rate = 10;
+int sampling_rate = 100;
 
 float camU = 0.0f; // in camera coordinate
 float camV = 0.0f;
@@ -325,8 +325,28 @@ int main()
         6,7
     };
     
-    
+    // setup camera
     cameraOrigin = glm::vec3(0.5, 0.5, 3.0);
+    
+    // setup 3D texture
+    std::string texture_path = "./geometry/Bucky_32_32_32.raw";
+    GLubyte *texture_data = load_3d_raw_data(texture_path, glm::vec3(32,32,32));
+    
+    unsigned int textureID;
+    int tex_width = 32;
+    int tex_height = 32;
+    int tex_depth = 32;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_3D, textureID);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP);
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_RED, tex_width, tex_height, tex_depth, 0, GL_RED,
+                 GL_UNSIGNED_BYTE, texture_data);
+    
+    
     
     
     // shader configuration
@@ -346,7 +366,8 @@ int main()
         
         // Clear the colorbuffer and depth buffer
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT);
         
         // update model path (if changed)
         if (lastModelName.compare(modelName) != 0)
@@ -383,7 +404,7 @@ int main()
         float plane_dist = 1 / float(sampling_rate);
         glm::vec3 normalVec = glm::vec3(0.0, 0.0, -1.0);
         int num_planes = (max_depth - min_depth) / plane_dist - 1;
-        std::cout << num_planes << "\n";
+        //std::cout << num_planes << "\n";
 
         std::vector<float> vertices_draw;
         std::vector<unsigned int> indices_draw;
@@ -394,11 +415,11 @@ int main()
         glGenBuffers(num_planes, VBOs);
         glGenBuffers(num_planes, EBOs);
         // setup the data for all the planes
-        //for (int i = 0; i < num_planes; i++) {
         for (int i = 0; i < num_planes; i++) {
             d = d - plane_dist;
-            std::cout << "d: " << d << "\n";
+            //std::cout << "d: " << d << "\n";
             std::vector<glm::vec3> intersects = intersect_points_per_plane(glm::vec3(0.0,0.0,d), normalVec, transform, cube_edges, 24);
+            
             // generate vertices positions (in object space) and triangle indices
             vertices_draw.clear();
             indices_draw.clear();
@@ -432,7 +453,11 @@ int main()
         
         // render object
         // draw line instead of fill
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        
+        // bind textures on corresponding texture units
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_3D, textureID);
         
         for (int i = 0; i < num_planes; i++) {
             glBindVertexArray(VAOs[i]);
@@ -720,11 +745,16 @@ std::vector<glm::vec3> vertex_transform_view(GLfloat vertices[], int size, glm::
 // ----------------------------------------------
 glm::vec3 plane_line_intersect(glm::vec3 edge0, glm::vec3 edge1, glm::vec3 plane0, glm::vec3 normal)
 {
-    float denominator = glm::dot(normal, edge1 - edge0);
+    //std::cout << "z of edge 0: " << edge0.z << "\n";
+    //std::cout << "z of edge 1: " << edge1.z << "\n";
+    //std::cout << "\n";
     float s_i = -1.0f;
-    if (glm::abs(denominator) > 0.0001) {
-        s_i =  glm::dot(normal, plane0 - edge0) / denominator;
-        //std::cout << "s_i: " << s_i << "\n";
+    if ((plane0.z <= edge0.z) and (plane0.z >= edge1.z)) {
+        float denominator = glm::dot(normal, edge1 - edge0);
+        if (glm::abs(denominator) > 0.0001) {
+            s_i =  glm::dot(normal, plane0 - edge0) / denominator;
+            //std::cout << "s_i: " << s_i << "\n";
+        }
     }
     if ((s_i > 0.0001) and (s_i < 0.9999)) {
         return (edge0 + s_i * (edge1 - edge0));
@@ -844,5 +874,29 @@ void gen_pos_indices(std::vector<glm::vec3> &original_pos, std::vector<float> &p
             indices.push_back(i + 1);
         }
     }
+}
+
+// load 3D texture data
+GLubyte * load_3d_raw_data(std::string texture_path, glm::vec3 dimension) {
+    size_t size = dimension[0] * dimension[1] * dimension[2];
+    
+    FILE *fp;
+    GLubyte *data = new GLubyte[size];              // 8bit
+    if (!(fp = fopen(texture_path.c_str(), "rb"))) {
+        std::cout << "Error: opening .raw file failed" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    else {
+        std::cout << "OK: open .raw file successed" << std::endl;
+    }
+    if (fread(data, sizeof(char), size, fp) != size) {
+        std::cout << "Error: read .raw file failed" << std::endl;
+        exit(1);
+    }
+    else {
+        std::cout << "OK: read .raw file successed" << std::endl;
+    }
+    fclose(fp);
+    return data;
 }
 
