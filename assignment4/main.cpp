@@ -451,6 +451,11 @@ int main()
         //glEnable(GL_CULL_FACE);
         //glFrontFace(GL_CCW);
         
+        // blending
+        glEnable(GL_BLEND);
+        // TODO: check the glBlendFunc
+        glBlendFunc( GL_ONE, GL_ONE_MINUS_SRC_ALPHA );
+        
         // render object
         // draw line instead of fill
         //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
