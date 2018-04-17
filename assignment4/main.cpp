@@ -433,7 +433,7 @@ int main()
         
         std::vector<float> vertices_draw;
         std::vector<unsigned int> indices_draw;
-        
+        std::vector<int> indices_size;
         float d = max_depth; // denote the current depth of the sampling plane
         unsigned int VBOs[num_planes], VAOs[num_planes], EBOs[num_planes];
         glGenVertexArrays(num_planes, VAOs); // we can also generate multiple VAOs or buffers at the same time
@@ -449,7 +449,7 @@ int main()
             vertices_draw.clear();
             indices_draw.clear();
             gen_pos_indices(intersects, vertices_draw, indices_draw, modelViewInverse);
-            
+            indices_size.push_back(indices_draw.size());
             // setup triangles for the current sampling plane
             glBindVertexArray(VAOs[i]);
             glBindBuffer(GL_ARRAY_BUFFER, VBOs[i]);
@@ -468,7 +468,6 @@ int main()
         objectShader.setMat4("model", model);
         objectShader.setMat4("view", view);
         objectShader.setMat4("projection", projection);
-        
         
         glm::vec4 myColor = glm::vec4(colval[0], colval[1], colval[2], colval[3]);
         objectShader.setVec4("ourColor", myColor);
@@ -506,7 +505,7 @@ int main()
         for (int i = 0; i < num_planes; i++) {
             glBindVertexArray(VAOs[i]);
             //glDrawArrays(GL_TRIANGLES, 0, 6);
-            glDrawElements(GL_TRIANGLES, indices_draw.size(), GL_UNSIGNED_INT, 0);
+            glDrawElements(GL_TRIANGLES, indices_size[i], GL_UNSIGNED_INT, 0);
         }
         
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -517,13 +516,16 @@ int main()
         // Swap the screen buffers
         glfwSwapBuffers(window);
         
-
+        // de-allocate resources
+        //glDeleteVertexArrays(num_planes, &VAOs);
+        //glDeleteBuffers(num_planes, &VBOs);
+        //glDeleteBuffers(num_planes, &EBOs);
     }
     // Properly de-allocate all resources once they've outlived their purpose
-    glDeleteVertexArrays(1, &objectVAO);
-    glDeleteVertexArrays(1, &lampVAO);
-    glDeleteBuffers(1, &objectVBO);
-    glDeleteBuffers(1, &lampVBO);
+    //glDeleteVertexArrays(1, &objectVAO);
+    //glDeleteVertexArrays(1, &lampVAO);
+    //glDeleteBuffers(1, &objectVBO);
+    //glDeleteBuffers(1, &lampVBO);
     // Terminate GLFW, clearing any resources allocated by GLFW.
     glfwTerminate();
     return 0;
