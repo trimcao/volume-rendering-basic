@@ -32,10 +32,8 @@
 using namespace nanogui;
 
 // declare methods
-std::vector<float> computeAverageXYZ(std::vector<Vertex> vertices);
 glm::vec3 camToWorld(glm::vec3 point, glm::vec3 camPos, glm::vec3 camRight, glm::vec3 camUp, glm::vec3 camFront);
 unsigned int loadTexture(const char *path);
-void computeTangent(std::vector<Vertex>&vertices);
 void setupDraw();
 void resetValues();
 std::vector<glm::vec3> vertex_transform_view(GLfloat vertices[], int size, glm::mat4 modelView, float &min_depth, float &max_depth);
@@ -99,34 +97,8 @@ std::string lastModelName = modelName;
 render_type renderType = Render2;
 Color colval(0.4f, 0.6f, 1.0f, 1.0f);
 
-float shininess = 32.0f;
-bool pointLightFlag = false;
-bool dirLightFlag = true;
 bool rotateCam = false;
 
-// directional light attributes
-float dirLightX = 0.0f; // in camera coordinate
-float dirLightY = -1.0f;
-float dirLightZ = -1.0f;
-glm::vec3 dirLightDirection(dirLightX, dirLightY, dirLightZ);
-Color dirLightAmbient(0.05f, 0.1f, 0.2f, 1.0f);
-Color dirLightDiffuse(0.3f, 0.5f, 1.0f, 1.0f);
-Color dirLightSpecular(1.0f, 1.0f, 1.0f, 1.0f);
-
-// point light attributes
-Color pointLightAmbient(0.2f, 0.1f, 0.05f, 1.0f);
-Color pointLightDiffuse(1.0f, 0.5f, 0.3f, 1.0f);
-Color pointLightSpecular(1.0f, 1.0f, 1.0f, 1.0f);
-
-// light position
-glm::vec3 lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
-glm::vec3 defaultLightPos = lightPos;
-
-// turn on/off diffuse mapping and normal mapping
-unsigned int diffuseMap;
-unsigned int normalMap;
-bool diffuseMapFlag = false;
-bool normalMapFlag = false;
 
 Screen *screen = nullptr;
 
@@ -180,8 +152,34 @@ int main()
     // Create nanogui gui
     bool enabled = true;
     FormHelper *gui = new FormHelper(screen);
-    ref<Window> nanoguiWindow = gui->addWindow(Eigen::Vector2i(0, 10), "Selectors 1");
+    //ref<Window> nanoguiWindow = gui->addWindow(Eigen::Vector2i(0, 10), "Selectors 1");
+    Window *nanoguiWindow = new Window(screen, "Button demo");
+    nanoguiWindow->setPosition(Vector2i(0, 10));
+    nanoguiWindow->setLayout(new GroupLayout());
+    Widget *panel = new Widget(nanoguiWindow);
+    panel->setLayout(new BoxLayout(Orientation::Horizontal,
+                                   Alignment::Middle, 0, 20));
     
+    Slider *slider = new Slider(panel);
+    slider->setValue(0.5f);
+    slider->setFixedWidth(80);
+    
+    TextBox *textBox = new TextBox(panel);
+    textBox->setFixedSize(Vector2i(60, 25));
+    textBox->setValue("50");
+    textBox->setUnits("%");
+    /*
+    slider->setCallback([textBox](float value) {
+        textBox->setValue(std::to_string((int) (value * 100)));
+    });
+    slider->setFinalCallback([&](float value) {
+        cout << "Final slider value: " << (int) (value * 100) << endl;
+    });
+    textBox->setFixedSize(Vector2i(60,25));
+    textBox->setFontSize(20);
+    textBox->setAlignment(TextBox::Alignment::Right);
+    */
+    /*
     gui->addGroup("Position");
     gui->addVariable("X", camU)->setSpinnable(true);
     gui->addVariable("Y", camV)->setSpinnable(true);
@@ -226,21 +224,10 @@ int main()
     });
     
     // create another Selector Bar
-    //window = new Window(this, "Basic widgets");
-    //window->setPosition(Vector2i(230, 10));
-    //window->setLayout(new GroupLayout());
-    
     
     FormHelper *gui2 = new FormHelper(screen);
     ref<Window> nanoguiWindow2 = gui2->addWindow(Eigen::Vector2i(230, 10), "Selectors 2");
-    
-    
-    //Widget *panel = new Widget(nanoguiWindow2);
-    //panel->setLayout(new BoxLayout(Orientation::Horizontal,
-    //                               Alignment::Middle, 0, 20));
 
-    
-    gui2->addVariable("Draw Percentage", drawPercent);
     
     gui2->addGroup("Lighting");
     gui2->addVariable("Object color", colval);
@@ -248,7 +235,7 @@ int main()
     
     gui2->addVariable("Texture map status", diffuseMapFlag);
     gui2->addVariable("Normal map status", normalMapFlag);
-
+    */
     
     screen->setVisible(true);
     screen->performLayout();
@@ -377,8 +364,8 @@ int main()
     objectShader.Use();
     
     // refresh the gui
-    gui->refresh();
-    gui2->refresh();
+    //gui->refresh();
+    //gui2->refresh();
     
     
     // Game loop
@@ -398,8 +385,8 @@ int main()
             resetValues();
             //setupDraw();
             // refresh the gui
-            gui->refresh();
-            gui2->refresh();
+            //gui->refresh();
+            //gui2->refresh();
         }
         lastModelName = modelName;
 
@@ -531,60 +518,6 @@ int main()
     return 0;
 }
 
-// computer average x, y of the vertices
-// -------------------------------------
-std::vector<float> computeAverageXYZ(std::vector<Vertex> vertices)
-{
-    std::vector<float> aveXY = std::vector<float>();
-    float minX = vertices[0].Position.x;
-    float maxX = vertices[0].Position.x;
-    float minY = vertices[0].Position.y;
-    float maxY = vertices[0].Position.y;
-    float minZ = vertices[0].Position.z;
-    float maxZ = vertices[0].Position.z;
-    // find max and min X (and Y and Z)
-    for (int i = 0; i < vertices.size(); i++)
-    {
-        if (vertices[i].Position.x > maxX)
-        {
-            maxX = vertices[i].Position.x;
-        }
-        if (vertices[i].Position.x < minX)
-        {
-            minX = vertices[i].Position.x;
-        }
-        if (vertices[i].Position.y > maxY)
-        {
-            maxY = vertices[i].Position.y;
-        }
-        if (vertices[i].Position.y < minY)
-        {
-            minY = vertices[i].Position.y;
-        }
-        if (vertices[i].Position.z < minZ)
-        {
-            minZ = vertices[i].Position.z;
-        }
-        if (vertices[i].Position.z > maxZ)
-        {
-            maxZ = vertices[i].Position.z;
-        }
-    }
-    float aveX = (maxX + minX) / 2;
-    float aveY = (maxY + minY) / 2;
-    float aveZ = (maxZ + minZ) / 2;
-    aveXY.push_back(aveX);
-    aveXY.push_back(aveY);
-    aveXY.push_back(aveZ);
-    aveXY.push_back(minX);
-    aveXY.push_back(maxX);
-    aveXY.push_back(minY);
-    aveXY.push_back(maxY);
-    aveXY.push_back(minZ);
-    aveXY.push_back(maxZ);
-    return aveXY;
-}
-
 // utility function for loading a 2D texture from file
 // ---------------------------------------------------
 unsigned int loadTexture(const char *path)
@@ -622,39 +555,6 @@ unsigned int loadTexture(const char *path)
     return textureID;
 }
 
-// compute tangent and bitangents for each vertex
-// ---------------------------------------------------
-void computeTangent(std::vector<Vertex>&vertices)
-{
-    for (int i = 0; i < vertices.size(); i+=3)
-    {
-        glm::vec3 tangent, bitangent;
-        glm::vec3 edge1 = vertices[i+1].Position - vertices[i].Position;
-        glm::vec3 edge2 = vertices[i+2].Position - vertices[i].Position;
-        glm::vec2 deltaUV1 = vertices[i+1].TexCoords - vertices[i].TexCoords;
-        glm::vec2 deltaUV2 = vertices[i+2].TexCoords - vertices[i].TexCoords;
-        
-        GLfloat f = 1.0f / (deltaUV1.x*deltaUV2.y - deltaUV1.y*deltaUV2.x);
-        
-        tangent.x = f * (deltaUV2.y*edge1.x - deltaUV1.y*edge2.x);
-        tangent.y = f * (deltaUV2.y*edge1.y - deltaUV1.y*edge2.y);
-        tangent.z = f * (deltaUV2.y*edge1.z - deltaUV1.y*edge2.z);
-        tangent = glm::normalize(tangent);
-        
-        bitangent.x = f * (-deltaUV2.x*edge1.x + deltaUV1.x*edge2.x);
-        bitangent.y = f * (-deltaUV2.x*edge1.y + deltaUV1.x*edge2.y);
-        bitangent.z = f * (-deltaUV2.x*edge1.z + deltaUV1.x*edge2.z);
-        bitangent = glm::normalize(bitangent);
-        
-        // set tangent and bitangent vectors to the vertices
-        vertices[i].Tangent = tangent;
-        vertices[i+1].Tangent = tangent;
-        vertices[i+2].Tangent = tangent;
-        vertices[i].Bitangent = bitangent;
-        vertices[i+1].Bitangent = bitangent;
-        vertices[i+2].Bitangent = bitangent;
-    }
-}
 
 // method to convert position on camera coordinates to world coordinates
 // ---------------------------------------------------------------------
@@ -673,65 +573,9 @@ glm::vec3 camToWorld(glm::vec3 point, glm::vec3 camPos, glm::vec3 camRight, glm:
 // --------------------------------------------------------------
 void setupDraw()
 {
-    vertices.clear();
-    
     // load model
     modelPath = "models/" + modelName + ".obj";
     load_obj(modelPath, vertices);
-    // load textures
-    std::string texturePath = "textures/" + modelName + "_diffuse.png";
-    std::string normalMapPath = "textures/" + modelName + "_normal.png";
-    diffuseMap = loadTexture(texturePath.c_str());
-    normalMap = loadTexture(normalMapPath.c_str());
-    
-    // compute tangent and bitangent vectors
-    computeTangent(vertices);
-    
-    // computer average X and Y
-    aveXY = computeAverageXYZ(vertices);
-    std::cout << "Ave X: " << aveXY[0] << "\n";
-    std::cout << "Ave Y: " << aveXY[1] << "\n";
-    std::cout << "Ave Z: " << aveXY[2] << "\n";
-    // set original camera position and target
-    // find the range X and Y of the object
-    stretchZ = aveXY[8] - aveXY[7];
-    stretchY = aveXY[6] - aveXY[5];
-    stretchX = aveXY[4] - aveXY[3];
-    std::cout << "Stretch Y: " << stretchY << "\n";
-    std::cout << "Stretch X: " << stretchX << "\n";
-    std::cout << "Stretch Z: " << stretchZ << "\n";
-    // set the starting position (origin) for the camera
-    float originZ = glm::max(stretchX, stretchY, stretchZ)*2.0;
-    cameraOrigin = glm::vec3(aveXY[0], aveXY[1], originZ);
-    
-    // create the vertex buffer
-    glGenVertexArrays(1, &objectVAO);
-    glGenBuffers(1, &objectVBO);
-    glBindVertexArray(objectVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, objectVBO);
-
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), &vertices[0], GL_STATIC_DRAW);
-    // vertex positions
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
-    // vertex normals
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
-    // vertex texture coords
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
-    // tangent
-    glEnableVertexAttribArray(3);
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
-    // bitangent
-    glEnableVertexAttribArray(4);
-    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
-    
-    glBindVertexArray(0);
-    
-    // set point light original position
-    defaultLightPos = cameraOrigin;
-    lightPos = cameraOrigin;
 }
 
 // reset the values when we load a new model
@@ -750,8 +594,6 @@ void resetValues()
     cameraRight = glm::vec3(1.0f, 0.0f, 0.0f);
     cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
     cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-    lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
-    dirLightDirection = glm::vec3(0.0f, -1.0f, -1.0f);
 }
 
 
