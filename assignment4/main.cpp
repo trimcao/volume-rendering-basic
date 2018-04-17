@@ -207,6 +207,7 @@ int main()
     nanoguiWindow2->setPosition(Eigen::Vector2i(230, 10));
     nanoguiWindow2->setLayout(new GroupLayout());
     new Label(nanoguiWindow2, "View Slider", "sans-bold");
+    
     Widget *panel = new Widget(nanoguiWindow2);
     panel->setLayout(new BoxLayout(Orientation::Horizontal,
     Alignment::Middle, 0, 20));
@@ -215,29 +216,85 @@ int main()
     slider->setValue(1.0f);
     slider->setFixedWidth(80);
 
-    float drawPercent = 1.0f;
+    float drawPercent = 1.0f; // must declare the variable here to use with GUI
     TextBox *textBox = new TextBox(panel);
-    //textBox->setFixedSize(Vector2i(60, 25));
     textBox->setValue(std::to_string((int) (drawPercent * 100)));
     textBox->setUnits("%");
     slider->setCallback([&drawPercent, textBox](float value) {
         drawPercent = value;
         textBox->setValue(std::to_string((int) (value * 100)));
     });
-    
-    /*
-    slider->setCallback([textBox](float value) {
-    textBox->setValue(std::to_string(value));
-    });
-    slider->setFinalCallback([&](float value) {
-        std::cout << "Final slider value: " << (int) (value * 100) << std::endl;
-    });
-    */
-    
     textBox->setFixedSize(Vector2i(60,25));
     textBox->setFontSize(20);
     textBox->setAlignment(TextBox::Alignment::Right);
-     
+    
+    // try to add a graph
+    new Label(nanoguiWindow2, "Transfer Function", "sans-bold");
+    panel = new Widget(nanoguiWindow2);
+    panel->setLayout(new BoxLayout(Orientation::Vertical,
+                                   Alignment::Middle, 0, 20));
+    //panel->setFixedHeight(200);
+    //panel->setFixedWidth(200);
+    Graph *graph = panel->add<Graph>("Some Function");
+    graph->setFixedHeight(200);
+    graph->setFixedWidth(200);
+    graph->setHeader("E = 2.35e-3");
+    graph->setFooter("Iteration 89");
+    VectorXf &func = graph->values();
+    func.resize(1000);
+    // manipulate the transfer function
+    func[0] = 0.0f;
+    func[500] = 1.0f;
+    func[999] = 0.0f;
+    for (int i = 0; i < 1000; ++i) {
+        //func[i] = 0.5f * (0.5f * std::sin(i / 10.f) +
+        //                 0.5f * std::cos(i / 23.f) + 1);
+        //func[i] = 2.5f * (0.5f * std::sin(i / 10.f) +
+        //              0.5f * std::cos(i / 23.f) + 1);
+        if (i == 0) func[i] = 0.0f;
+        else if ((i > 0) and (i < 500)) {
+            func[i] = func[0] + (func[500] - func[0]) * (float(i) / 500);
+        }
+        else if (i == 500) func[i] = 1.0f;
+        else if ((i > 500) and (i < 999)) {
+            func[i] = func[500] + (func[999] - func[500]) * ((float(i)-500) / (1000-500));
+        }
+        else if (i == 999) func[i] = 0.0f;
+    }
+    std::cout << "func 200: " << func[200] << "\n";
+    
+    // try to have a slider at point 500
+    new Label(nanoguiWindow2, "Slider1", "sans-bold");
+    panel = new Widget(nanoguiWindow2);
+    panel->setLayout(new BoxLayout(Orientation::Horizontal,
+                                   Alignment::Middle, 0, 20));
+    slider = new Slider(panel);
+    slider->setValue(1.0f);
+    slider->setFixedWidth(80);
+    textBox = new TextBox(panel);
+    textBox->setValue(std::to_string((int) (func[500] * 100)));
+    textBox->setUnits("%");
+    slider->setCallback([&func, textBox](float value) {
+        // TODO: this is just for testing
+        func[500] = value;
+        func[0] = 0.0f;
+        func[999] = 0.0f;
+        for (int i = 0; i < 1000; ++i) {
+            if (i == 0) func[i] = 0.0f;
+            else if ((i > 0) and (i < 500)) {
+                func[i] = func[0] + (func[500] - func[0]) * (float(i) / 500);
+            }
+            else if (i == 500) func[i] = value;
+            else if ((i > 500) and (i < 999)) {
+                func[i] = func[500] + (func[999] - func[500]) * ((float(i)-500) / (1000-500));
+            }
+            else if (i == 999) func[i] = 0.0f;
+        }
+        textBox->setValue(std::to_string((int) (value * 100)));
+    });
+    textBox->setFixedSize(Vector2i(60,25));
+    textBox->setFontSize(20);
+    textBox->setAlignment(TextBox::Alignment::Right);
     
     screen->setVisible(true);
     screen->performLayout();
