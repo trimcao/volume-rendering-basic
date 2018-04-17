@@ -59,10 +59,10 @@ const GLuint SCR_WIDTH = 1024, SCR_HEIGHT = 768;
 int sampling_rate = 10;
 int reference_sampling_rate = 10;
 // slider to show the line triangles
-float drawPercent = 1.0;
+//float drawPercent = 1.0f;
 
 // turn on/off texture map
-bool textureMapFlag = true;
+bool textureMapFlag = false;
 
 float camU = 0.0f; // in camera coordinate
 float camV = 0.0f;
@@ -152,34 +152,8 @@ int main()
     // Create nanogui gui
     bool enabled = true;
     FormHelper *gui = new FormHelper(screen);
-    //ref<Window> nanoguiWindow = gui->addWindow(Eigen::Vector2i(0, 10), "Selectors 1");
-    Window *nanoguiWindow = new Window(screen, "Button demo");
-    nanoguiWindow->setPosition(Vector2i(0, 10));
-    nanoguiWindow->setLayout(new GroupLayout());
-    Widget *panel = new Widget(nanoguiWindow);
-    panel->setLayout(new BoxLayout(Orientation::Horizontal,
-                                   Alignment::Middle, 0, 20));
+    ref<Window> nanoguiWindow = gui->addWindow(Eigen::Vector2i(0, 10), "Selectors 1");
     
-    Slider *slider = new Slider(panel);
-    slider->setValue(0.5f);
-    slider->setFixedWidth(80);
-    
-    TextBox *textBox = new TextBox(panel);
-    textBox->setFixedSize(Vector2i(60, 25));
-    textBox->setValue("50");
-    textBox->setUnits("%");
-    /*
-    slider->setCallback([textBox](float value) {
-        textBox->setValue(std::to_string((int) (value * 100)));
-    });
-    slider->setFinalCallback([&](float value) {
-        cout << "Final slider value: " << (int) (value * 100) << endl;
-    });
-    textBox->setFixedSize(Vector2i(60,25));
-    textBox->setFontSize(20);
-    textBox->setAlignment(TextBox::Alignment::Right);
-    */
-    /*
     gui->addGroup("Position");
     gui->addVariable("X", camU)->setSpinnable(true);
     gui->addVariable("Y", camV)->setSpinnable(true);
@@ -214,6 +188,7 @@ int main()
     //gui->addVariable("z near", zNear)->setSpinnable(true);
     //gui->addVariable("z far", zFar)->setSpinnable(true);
     gui->addVariable("Render type", renderType, enabled)->setItems({"Line", "Fill", "Point"});
+    gui->addVariable("Object color", colval);
     gui->addVariable("Sampling rate", sampling_rate)->setSpinnable(true);
     gui->addVariable("Texture map", textureMapFlag);
     gui->addVariable("Model name", modelName);
@@ -226,16 +201,43 @@ int main()
     // create another Selector Bar
     
     FormHelper *gui2 = new FormHelper(screen);
-    ref<Window> nanoguiWindow2 = gui2->addWindow(Eigen::Vector2i(230, 10), "Selectors 2");
+    //ref<Window> nanoguiWindow2 = gui2->addWindow(Eigen::Vector2i(230, 10), "Selectors 2");
 
+    Window *nanoguiWindow2 = new Window(screen, "Selectors 2");
+    nanoguiWindow2->setPosition(Eigen::Vector2i(230, 10));
+    nanoguiWindow2->setLayout(new GroupLayout());
+    new Label(nanoguiWindow2, "View Slider", "sans-bold");
+    Widget *panel = new Widget(nanoguiWindow2);
+    panel->setLayout(new BoxLayout(Orientation::Horizontal,
+    Alignment::Middle, 0, 20));
+
+    Slider *slider = new Slider(panel);
+    slider->setValue(1.0f);
+    slider->setFixedWidth(80);
+
+    float drawPercent = 1.0f;
+    TextBox *textBox = new TextBox(panel);
+    //textBox->setFixedSize(Vector2i(60, 25));
+    textBox->setValue(std::to_string((int) (drawPercent * 100)));
+    textBox->setUnits("%");
+    slider->setCallback([&drawPercent, textBox](float value) {
+        drawPercent = value;
+        textBox->setValue(std::to_string((int) (value * 100)));
+    });
     
-    gui2->addGroup("Lighting");
-    gui2->addVariable("Object color", colval);
-    gui2->addVariable("Object shininess", shininess)->setSpinnable(true);
-    
-    gui2->addVariable("Texture map status", diffuseMapFlag);
-    gui2->addVariable("Normal map status", normalMapFlag);
+    /*
+    slider->setCallback([textBox](float value) {
+    textBox->setValue(std::to_string(value));
+    });
+    slider->setFinalCallback([&](float value) {
+        std::cout << "Final slider value: " << (int) (value * 100) << std::endl;
+    });
     */
+    
+    textBox->setFixedSize(Vector2i(60,25));
+    textBox->setFontSize(20);
+    textBox->setAlignment(TextBox::Alignment::Right);
+     
     
     screen->setVisible(true);
     screen->performLayout();
@@ -371,6 +373,7 @@ int main()
     // Game loop
     while (!glfwWindowShouldClose(window))
     {
+        //std::cout << drawPercent << "\n";
         // Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
         glfwPollEvents();
         
