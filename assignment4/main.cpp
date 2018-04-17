@@ -58,7 +58,13 @@ enum render_type {
 const GLuint SCR_WIDTH = 1024, SCR_HEIGHT = 768;
 
 // sampling rate
-int sampling_rate = 100;
+int sampling_rate = 10;
+int reference_sampling_rate = 10;
+// slider to show the line triangles
+float drawPercent = 1.0;
+
+// turn on/off texture map
+bool textureMapFlag = true;
 
 float camU = 0.0f; // in camera coordinate
 float camV = 0.0f;
@@ -207,8 +213,11 @@ int main()
     });
     
     gui->addGroup("Configuration");
-    gui->addVariable("z near", zNear)->setSpinnable(true);
-    gui->addVariable("z far", zFar)->setSpinnable(true);
+    //gui->addVariable("z near", zNear)->setSpinnable(true);
+    //gui->addVariable("z far", zFar)->setSpinnable(true);
+    gui->addVariable("Render type", renderType, enabled)->setItems({"Line", "Fill", "Point"});
+    gui->addVariable("Sampling rate", sampling_rate)->setSpinnable(true);
+    gui->addVariable("Texture map", textureMapFlag);
     gui->addVariable("Model name", modelName);
     gui->addButton("Reload model", []() {
         resetValues(); setupDraw();
@@ -217,8 +226,21 @@ int main()
     });
     
     // create another Selector Bar
+    //window = new Window(this, "Basic widgets");
+    //window->setPosition(Vector2i(230, 10));
+    //window->setLayout(new GroupLayout());
+    
+    
     FormHelper *gui2 = new FormHelper(screen);
     ref<Window> nanoguiWindow2 = gui2->addWindow(Eigen::Vector2i(230, 10), "Selectors 2");
+    
+    
+    //Widget *panel = new Widget(nanoguiWindow2);
+    //panel->setLayout(new BoxLayout(Orientation::Horizontal,
+    //                               Alignment::Middle, 0, 20));
+
+    
+    gui2->addVariable("Draw Percentage", drawPercent);
     
     gui2->addGroup("Lighting");
     gui2->addVariable("Object color", colval);
@@ -227,6 +249,7 @@ int main()
     gui2->addVariable("Texture map status", diffuseMapFlag);
     gui2->addVariable("Normal map status", normalMapFlag);
 
+    
     screen->setVisible(true);
     screen->performLayout();
     
@@ -405,7 +428,9 @@ int main()
         glm::vec3 normalVec = glm::vec3(0.0, 0.0, -1.0);
         int num_planes = (max_depth - min_depth) / plane_dist - 1;
         //std::cout << num_planes << "\n";
-
+        // set num_planes based on the percentage of planes we draw
+        num_planes = int(drawPercent * num_planes);
+        
         std::vector<float> vertices_draw;
         std::vector<unsigned int> indices_draw;
         
@@ -444,8 +469,10 @@ int main()
         objectShader.setMat4("view", view);
         objectShader.setMat4("projection", projection);
         
+        
         glm::vec4 myColor = glm::vec4(colval[0], colval[1], colval[2], colval[3]);
         objectShader.setVec4("ourColor", myColor);
+        objectShader.setBool("textureMapFlag", textureMapFlag);
         
         // enable culling face
         //glEnable(GL_CULL_FACE);
@@ -456,13 +483,25 @@ int main()
         // TODO: check the glBlendFunc
         glBlendFunc( GL_ONE, GL_ONE_MINUS_SRC_ALPHA );
         
-        // render object
-        // draw line instead of fill
-        //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        // render object, choosing render type
+        switch(renderType)
+        {
+            case Render1:
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                break;
+            case Render2:
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                break;
+            case Render3:
+                glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+                break;
+        }
         
         // bind textures on corresponding texture units
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_3D, textureID);
+        if (textureMapFlag) {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_3D, textureID);
+        }
         
         for (int i = 0; i < num_planes; i++) {
             glBindVertexArray(VAOs[i]);
