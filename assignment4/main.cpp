@@ -244,21 +244,17 @@ int main()
                                    Alignment::Middle, 0, 20));
     //panel->setFixedHeight(200);
     //panel->setFixedWidth(200);
-    Graph *graph = panel->add<Graph>("Some Function");
+    Graph *graph = panel->add<Graph>("Alpha (0, 1)");
     graph->setFixedHeight(200);
     graph->setFixedWidth(200);
-    graph->setHeader("E = 2.35e-3");
-    graph->setFooter("Iteration 89");
+    //graph->setHeader("Alpha (0, 1)");
+    graph->setFooter("Intensity (0, 255)");
     VectorXf &func = graph->values();
     func.resize(transfer_func_range);
     // initialie the transfer function
-    //func[0] = 0.0f;
-    //func[500] = 1.0f;
-    //func[999] = 0.0f;
     for (int i = 0; i < transfer_func_range; i++) {
         func[i] = 0.0f;
     }
-    //std::cout << "func 200: " << func[200] << "\n";
     
     // create slider 0
     new Label(nanoguiWindow2, "Transfer Function Sliders", "sans-bold");
@@ -496,16 +492,20 @@ int main()
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP);
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_RED, tex_width, tex_height, tex_depth, 0, GL_RED,
-                 GL_UNSIGNED_BYTE, texture_data);
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_RED, tex_width, tex_height, tex_depth, 0, GL_RED, GL_UNSIGNED_BYTE, texture_data);
     
     
-    
+    // load transfer function texture
+    std::string tfTexPath = "./textures/colorbar.png";
+    unsigned int tfTexID = loadTexture(tfTexPath.c_str());
+    std::cout << "textureID: " << textureID << "\n";
+    std::cout << "tfTexID: " << tfTexID << "\n";
     
     // shader configuration
     // --------------------
     objectShader.Use();
-    
+    objectShader.setInt("ourTexture", 0);
+    objectShader.setInt("tfTex", 1);
     // refresh the gui
     //gui->refresh();
     //gui2->refresh();
@@ -604,6 +604,26 @@ int main()
         objectShader.setVec4("ourColor", myColor);
         objectShader.setBool("textureMapFlag", textureMapFlag);
         
+        // set the transfer function values
+        /*
+        uniform int transfer_func_range;
+        uniform int slide_space;
+        uniform float slider0;
+        uniform float slider1;
+        uniform float slider2;
+        uniform float slider3;
+        uniform float slider4;
+        uniform float slider5;
+        */
+        objectShader.setInt("transfer_func_range", transfer_func_range);
+        objectShader.setInt("slide_space", slide_space);
+        objectShader.setFloat("slider0", func[0*slide_space]);
+        objectShader.setFloat("slider1", func[1*slide_space]);
+        objectShader.setFloat("slider2", func[2*slide_space]);
+        objectShader.setFloat("slider3", func[3*slide_space]);
+        objectShader.setFloat("slider4", func[4*slide_space]);
+        objectShader.setFloat("slider5", func[5*slide_space]);
+        
         // enable culling face
         //glEnable(GL_CULL_FACE);
         //glFrontFace(GL_CCW);
@@ -631,6 +651,9 @@ int main()
         if (textureMapFlag) {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_3D, textureID);
+            // bind texture for colorbar
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, tfTexID);
         }
         
         for (int i = 0; i < num_planes; i++) {
