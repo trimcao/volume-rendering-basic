@@ -44,6 +44,9 @@ bool less(glm::vec3 a, glm::vec3 b, glm::vec3 center);
 void insertion_sort(std::vector<glm::vec3> &points, glm::vec3 center);
 void gen_pos_indices(std::vector<glm::vec3> &original_pos, std::vector<float> &positions, std::vector<unsigned int> &indices, glm::mat4 &matrix);
 GLubyte * load_3d_raw_data(std::string texture_path, glm::vec3 dimension);
+void update_transfer_func(VectorXf &func, int range, int num_sliders, int slide_space);
+int get_slide_x(int slider, int slide_space);
+
 
 enum render_type {
     Render1 = 0,
@@ -60,6 +63,12 @@ int sampling_rate = 10;
 int reference_sampling_rate = 10;
 // slider to show the line triangles
 //float drawPercent = 1.0f;
+
+// transfer function
+int transfer_func_range = 256;
+// number of sliders that can modify the transfer function
+int num_sliders = 6;
+int slide_space = int((float)(transfer_func_range - 1) / (num_sliders - 1));
 
 // turn on/off texture map
 bool textureMapFlag = false;
@@ -241,56 +250,131 @@ int main()
     graph->setHeader("E = 2.35e-3");
     graph->setFooter("Iteration 89");
     VectorXf &func = graph->values();
-    func.resize(1000);
-    // manipulate the transfer function
-    func[0] = 0.0f;
-    func[500] = 1.0f;
-    func[999] = 0.0f;
-    for (int i = 0; i < 1000; ++i) {
-        //func[i] = 0.5f * (0.5f * std::sin(i / 10.f) +
-        //                 0.5f * std::cos(i / 23.f) + 1);
-        //func[i] = 2.5f * (0.5f * std::sin(i / 10.f) +
-        //              0.5f * std::cos(i / 23.f) + 1);
-        if (i == 0) func[i] = 0.0f;
-        else if ((i > 0) and (i < 500)) {
-            func[i] = func[0] + (func[500] - func[0]) * (float(i) / 500);
-        }
-        else if (i == 500) func[i] = 1.0f;
-        else if ((i > 500) and (i < 999)) {
-            func[i] = func[500] + (func[999] - func[500]) * ((float(i)-500) / (1000-500));
-        }
-        else if (i == 999) func[i] = 0.0f;
+    func.resize(transfer_func_range);
+    // initialie the transfer function
+    //func[0] = 0.0f;
+    //func[500] = 1.0f;
+    //func[999] = 0.0f;
+    for (int i = 0; i < transfer_func_range; i++) {
+        func[i] = 0.0f;
     }
-    std::cout << "func 200: " << func[200] << "\n";
+    //std::cout << "func 200: " << func[200] << "\n";
     
-    // try to have a slider at point 500
-    new Label(nanoguiWindow2, "Slider1", "sans-bold");
+    // create slider 0
+    new Label(nanoguiWindow2, "Transfer Function Sliders", "sans-bold");
     panel = new Widget(nanoguiWindow2);
     panel->setLayout(new BoxLayout(Orientation::Horizontal,
                                    Alignment::Middle, 0, 20));
     slider = new Slider(panel);
-    slider->setValue(1.0f);
+    slider->setValue(0.0f);
     slider->setFixedWidth(80);
     textBox = new TextBox(panel);
-    textBox->setValue(std::to_string((int) (func[500] * 100)));
+    textBox->setValue(std::to_string((int) (func[0*slide_space] * 100)));
     textBox->setUnits("%");
     slider->setCallback([&func, textBox](float value) {
-        // TODO: this is just for testing
-        func[500] = value;
-        func[0] = 0.0f;
-        func[999] = 0.0f;
-        for (int i = 0; i < 1000; ++i) {
-            if (i == 0) func[i] = 0.0f;
-            else if ((i > 0) and (i < 500)) {
-                func[i] = func[0] + (func[500] - func[0]) * (float(i) / 500);
-            }
-            else if (i == 500) func[i] = value;
-            else if ((i > 500) and (i < 999)) {
-                func[i] = func[500] + (func[999] - func[500]) * ((float(i)-500) / (1000-500));
-            }
-            else if (i == 999) func[i] = 0.0f;
-        }
+        func[0*slide_space] = value;
         textBox->setValue(std::to_string((int) (value * 100)));
+        update_transfer_func(func, transfer_func_range, num_sliders, slide_space);
+    });
+    textBox->setFixedSize(Vector2i(60,25));
+    textBox->setFontSize(20);
+    textBox->setAlignment(TextBox::Alignment::Right);
+    
+    // create slider 1
+    //new Label(nanoguiWindow2, "Slider1", "sans-bold");
+    panel = new Widget(nanoguiWindow2);
+    panel->setLayout(new BoxLayout(Orientation::Horizontal,
+                                   Alignment::Middle, 0, 20));
+    slider = new Slider(panel);
+    slider->setValue(0.0f);
+    slider->setFixedWidth(80);
+    textBox = new TextBox(panel);
+    textBox->setValue(std::to_string((int) (func[1*slide_space] * 100)));
+    textBox->setUnits("%");
+    slider->setCallback([&func, textBox](float value) {
+        func[1*slide_space] = value;
+        textBox->setValue(std::to_string((int) (value * 100)));
+        update_transfer_func(func, transfer_func_range, num_sliders, slide_space);
+    });
+    textBox->setFixedSize(Vector2i(60,25));
+    textBox->setFontSize(20);
+    textBox->setAlignment(TextBox::Alignment::Right);
+    
+    // create slider 2
+    //new Label(nanoguiWindow2, "Slider2", "sans-bold");
+    panel = new Widget(nanoguiWindow2);
+    panel->setLayout(new BoxLayout(Orientation::Horizontal,
+                                   Alignment::Middle, 0, 20));
+    slider = new Slider(panel);
+    slider->setValue(0.0f);
+    slider->setFixedWidth(80);
+    textBox = new TextBox(panel);
+    textBox->setValue(std::to_string((int) (func[2*slide_space] * 100)));
+    textBox->setUnits("%");
+    slider->setCallback([&func, textBox](float value) {
+        func[2*slide_space] = value;
+        textBox->setValue(std::to_string((int) (value * 100)));
+        update_transfer_func(func, transfer_func_range, num_sliders, slide_space);
+    });
+    textBox->setFixedSize(Vector2i(60,25));
+    textBox->setFontSize(20);
+    textBox->setAlignment(TextBox::Alignment::Right);
+    
+    // create slider 3
+    //new Label(nanoguiWindow2, "Slider3", "sans-bold");
+    panel = new Widget(nanoguiWindow2);
+    panel->setLayout(new BoxLayout(Orientation::Horizontal,
+                                   Alignment::Middle, 0, 20));
+    slider = new Slider(panel);
+    slider->setValue(0.0f);
+    slider->setFixedWidth(80);
+    textBox = new TextBox(panel);
+    textBox->setValue(std::to_string((int) (func[3*slide_space] * 100)));
+    textBox->setUnits("%");
+    slider->setCallback([&func, textBox](float value) {
+        func[3*slide_space] = value;
+        textBox->setValue(std::to_string((int) (value * 100)));
+        update_transfer_func(func, transfer_func_range, num_sliders, slide_space);
+    });
+    textBox->setFixedSize(Vector2i(60,25));
+    textBox->setFontSize(20);
+    textBox->setAlignment(TextBox::Alignment::Right);
+    
+    // create slider 4
+    //new Label(nanoguiWindow2, "Slider4", "sans-bold");
+    panel = new Widget(nanoguiWindow2);
+    panel->setLayout(new BoxLayout(Orientation::Horizontal,
+                                   Alignment::Middle, 0, 20));
+    slider = new Slider(panel);
+    slider->setValue(0.0f);
+    slider->setFixedWidth(80);
+    textBox = new TextBox(panel);
+    textBox->setValue(std::to_string((int) (func[4*slide_space] * 100)));
+    textBox->setUnits("%");
+    slider->setCallback([&func, textBox](float value) {
+        func[4*slide_space] = value;
+        textBox->setValue(std::to_string((int) (value * 100)));
+        update_transfer_func(func, transfer_func_range, num_sliders, slide_space);
+    });
+    textBox->setFixedSize(Vector2i(60,25));
+    textBox->setFontSize(20);
+    textBox->setAlignment(TextBox::Alignment::Right);
+    
+    // create slider 5
+    //new Label(nanoguiWindow2, "Slider5", "sans-bold");
+    panel = new Widget(nanoguiWindow2);
+    panel->setLayout(new BoxLayout(Orientation::Horizontal,
+                                   Alignment::Middle, 0, 20));
+    slider = new Slider(panel);
+    slider->setValue(0.0f);
+    slider->setFixedWidth(80);
+    textBox = new TextBox(panel);
+    textBox->setValue(std::to_string((int) (func[5*slide_space] * 100)));
+    textBox->setUnits("%");
+    slider->setCallback([&func, textBox](float value) {
+        func[5*slide_space] = value;
+        textBox->setValue(std::to_string((int) (value * 100)));
+        update_transfer_func(func, transfer_func_range, num_sliders, slide_space);
     });
     textBox->setFixedSize(Vector2i(60,25));
     textBox->setFontSize(20);
@@ -848,3 +932,29 @@ GLubyte * load_3d_raw_data(std::string texture_path, glm::vec3 dimension) {
     return data;
 }
 
+// helper method to find the x-coordinate of a slider
+// on the transfer function
+int get_slide_x(int slider, int slide_space)
+{
+    return slider * slide_space;
+}
+
+// update the transfer function
+// ------------------------------------------------------------------
+void update_transfer_func(VectorXf &func, int range, int num_sliders, int slide_space)
+{
+    // compute the space between two sliders
+    //int slide_space = int((float)(range - 1) / (num_sliders - 1));
+    for (int i = 0; i < range; i++) {
+        if (i % slide_space == 0) {
+            // do nothing
+        }
+        else {
+            int slider0 = int(i / slide_space);
+            int slider1 = slider0 + 1;
+            int slider0_x = get_slide_x(slider0, slide_space);
+            int slider1_x = get_slide_x(slider1, slide_space);
+            func[i] = func[slider0_x] + (func[slider1_x] - func[slider0_x]) * ((float(i) - slider0_x) / (slider1_x - slider0_x));
+        }
+    }
+}
