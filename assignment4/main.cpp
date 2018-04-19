@@ -34,7 +34,6 @@ using namespace nanogui;
 // declare methods
 glm::vec3 camToWorld(glm::vec3 point, glm::vec3 camPos, glm::vec3 camRight, glm::vec3 camUp, glm::vec3 camFront);
 unsigned int loadTexture(const char *path);
-void setupDraw();
 void resetValues();
 std::vector<glm::vec3> vertex_transform_view(GLfloat vertices[], int size, glm::mat4 modelView, float &min_depth, float &max_depth);
 glm::vec3 plane_line_intersect(glm::vec3 edge0, glm::vec3 edge1, glm::vec3 plane0, glm::vec3 normal);
@@ -44,14 +43,22 @@ bool less(glm::vec3 a, glm::vec3 b, glm::vec3 center);
 void insertion_sort(std::vector<glm::vec3> &points, glm::vec3 center);
 void gen_pos_indices(std::vector<glm::vec3> &original_pos, std::vector<float> &positions, std::vector<unsigned int> &indices, glm::mat4 &matrix);
 GLubyte * load_3d_raw_data(std::string texture_path, glm::vec3 dimension);
-void update_transfer_func(VectorXf &func, int range, int num_sliders, int slide_space);
+void update_transfer_func(VectorXf &func, int range, int slide_space);
 int get_slide_x(int slider, int slide_space);
-
+unsigned int load3DTexture(std::string texture_path, int width, int height, int depth);
+void setupModel();
 
 enum render_type {
     Render1 = 0,
     Render2,
     Render3
+};
+
+enum model_chosen {
+    Model1 = 0,
+    Model2,
+    Model3,
+    Model4
 };
 
 
@@ -72,6 +79,8 @@ int slide_space = int((float)(transfer_func_range - 1) / (num_sliders - 1));
 
 // turn on/off texture map
 bool textureMapFlag = false;
+std::string texture_path;
+unsigned int textureID;
 
 float camU = 0.0f; // in camera coordinate
 float camV = 0.0f;
@@ -105,9 +114,8 @@ std::string lastModelPath = modelPath;
 std::string lastModelName = modelName;
 render_type renderType = Render2;
 Color colval(0.4f, 0.6f, 1.0f, 1.0f);
-
 bool rotateCam = false;
-
+model_chosen model = Model1;
 
 Screen *screen = nullptr;
 
@@ -200,15 +208,18 @@ int main()
     gui->addVariable("Object color", colval);
     gui->addVariable("Sampling rate", sampling_rate)->setSpinnable(true);
     gui->addVariable("Texture map", textureMapFlag);
-    gui->addVariable("Model name", modelName);
+    //gui->addVariable("Model name", modelName);
+    gui->addVariable("Model", model, enabled)->setItems({"Bucky", "Teapot", "Bonsai", "Head"});
     gui->addButton("Reload model", []() {
-        resetValues(); setupDraw();
+        setupModel();
+    });
+    gui->addButton("Reset camera", []() {
+        resetValues();
         //gui->refresh();
         //gui2->refresh();
     });
     
     // create another Selector Bar
-    
     FormHelper *gui2 = new FormHelper(screen);
     //ref<Window> nanoguiWindow2 = gui2->addWindow(Eigen::Vector2i(230, 10), "Selectors 2");
 
@@ -237,13 +248,12 @@ int main()
     textBox->setFontSize(20);
     textBox->setAlignment(TextBox::Alignment::Right);
     
-    // try to add a graph
+    // Add a function graph (transfer function)
     new Label(nanoguiWindow2, "Transfer Function", "sans-bold");
     panel = new Widget(nanoguiWindow2);
     panel->setLayout(new BoxLayout(Orientation::Vertical,
                                    Alignment::Middle, 0, 20));
-    //panel->setFixedHeight(200);
-    //panel->setFixedWidth(200);
+    
     Graph *graph = panel->add<Graph>("Alpha (0, 1)");
     graph->setFixedHeight(200);
     graph->setFixedWidth(200);
@@ -270,7 +280,7 @@ int main()
     slider->setCallback([&func, textBox](float value) {
         func[0*slide_space] = value;
         textBox->setValue(std::to_string((int) (value * 100)));
-        update_transfer_func(func, transfer_func_range, num_sliders, slide_space);
+        update_transfer_func(func, transfer_func_range, slide_space);
     });
     textBox->setFixedSize(Vector2i(60,25));
     textBox->setFontSize(20);
@@ -290,7 +300,7 @@ int main()
     slider->setCallback([&func, textBox](float value) {
         func[1*slide_space] = value;
         textBox->setValue(std::to_string((int) (value * 100)));
-        update_transfer_func(func, transfer_func_range, num_sliders, slide_space);
+        update_transfer_func(func, transfer_func_range, slide_space);
     });
     textBox->setFixedSize(Vector2i(60,25));
     textBox->setFontSize(20);
@@ -310,7 +320,7 @@ int main()
     slider->setCallback([&func, textBox](float value) {
         func[2*slide_space] = value;
         textBox->setValue(std::to_string((int) (value * 100)));
-        update_transfer_func(func, transfer_func_range, num_sliders, slide_space);
+        update_transfer_func(func, transfer_func_range, slide_space);
     });
     textBox->setFixedSize(Vector2i(60,25));
     textBox->setFontSize(20);
@@ -330,7 +340,7 @@ int main()
     slider->setCallback([&func, textBox](float value) {
         func[3*slide_space] = value;
         textBox->setValue(std::to_string((int) (value * 100)));
-        update_transfer_func(func, transfer_func_range, num_sliders, slide_space);
+        update_transfer_func(func, transfer_func_range, slide_space);
     });
     textBox->setFixedSize(Vector2i(60,25));
     textBox->setFontSize(20);
@@ -350,7 +360,7 @@ int main()
     slider->setCallback([&func, textBox](float value) {
         func[4*slide_space] = value;
         textBox->setValue(std::to_string((int) (value * 100)));
-        update_transfer_func(func, transfer_func_range, num_sliders, slide_space);
+        update_transfer_func(func, transfer_func_range, slide_space);
     });
     textBox->setFixedSize(Vector2i(60,25));
     textBox->setFontSize(20);
@@ -370,7 +380,7 @@ int main()
     slider->setCallback([&func, textBox](float value) {
         func[5*slide_space] = value;
         textBox->setValue(std::to_string((int) (value * 100)));
-        update_transfer_func(func, transfer_func_range, num_sliders, slide_space);
+        update_transfer_func(func, transfer_func_range, slide_space);
     });
     textBox->setFixedSize(Vector2i(60,25));
     textBox->setFontSize(20);
@@ -477,23 +487,8 @@ int main()
     // setup camera
     cameraOrigin = glm::vec3(0.5, 0.5, 3.0);
     
-    // setup 3D texture
-    std::string texture_path = "./geometry/Bucky_32_32_32.raw";
-    GLubyte *texture_data = load_3d_raw_data(texture_path, glm::vec3(32,32,32));
-    
-    unsigned int textureID;
-    int tex_width = 32;
-    int tex_height = 32;
-    int tex_depth = 32;
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_3D, textureID);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP);
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_RED, tex_width, tex_height, tex_depth, 0, GL_RED, GL_UNSIGNED_BYTE, texture_data);
-    
+    // setup 3D model
+    setupModel();
     
     // load transfer function texture
     std::string tfTexPath = "./textures/colorbar.png";
@@ -522,17 +517,6 @@ int main()
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClear(GL_COLOR_BUFFER_BIT);
-        
-        // update model path (if changed)
-        if (lastModelName.compare(modelName) != 0)
-        {
-            resetValues();
-            //setupDraw();
-            // refresh the gui
-            //gui->refresh();
-            //gui2->refresh();
-        }
-        lastModelName = modelName;
 
         // update camera position and target
         viewPos = camToWorld(glm::vec3(camU, camV, camN), cameraOrigin, cameraRight, cameraUp, cameraFront);
@@ -543,7 +527,6 @@ int main()
         glm::mat4 view = glm::lookAt(viewPos, viewTarget, viewUp);
         // projection matrix
         glm::mat4 projection = glm::perspective(glm::radians(viewDegree), (float)SCR_WIDTH / (float)SCR_HEIGHT, zNear, zFar);
-        
     
         // test transforming vertices
         glm::mat4 modelView = view*model;
@@ -730,15 +713,6 @@ glm::vec3 camToWorld(glm::vec3 point, glm::vec3 camPos, glm::vec3 camRight, glm:
     return result;
 }
 
-// setup the model: read vertex data, create vertex buffer, etc.
-// --------------------------------------------------------------
-void setupDraw()
-{
-    // load model
-    modelPath = "models/" + modelName + ".obj";
-    load_obj(modelPath, vertices);
-}
-
 // reset the values when we load a new model
 // ---------------------------------------------
 void resetValues()
@@ -755,6 +729,8 @@ void resetValues()
     cameraRight = glm::vec3(1.0f, 0.0f, 0.0f);
     cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
     cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+    // setup camera
+    cameraOrigin = glm::vec3(0.5, 0.5, 3.0);
 }
 
 
@@ -794,9 +770,6 @@ std::vector<glm::vec3> vertex_transform_view(GLfloat vertices[], int size, glm::
 // ----------------------------------------------
 glm::vec3 plane_line_intersect(glm::vec3 edge0, glm::vec3 edge1, glm::vec3 plane0, glm::vec3 normal)
 {
-    //std::cout << "z of edge 0: " << edge0.z << "\n";
-    //std::cout << "z of edge 1: " << edge1.z << "\n";
-    //std::cout << "\n";
     float s_i = -1.0f;
     if ((plane0.z <= edge0.z) and (plane0.z >= edge1.z)) {
         float denominator = glm::dot(normal, edge1 - edge0);
@@ -828,7 +801,6 @@ std::vector<glm::vec3> intersect_points_per_plane(glm::vec3 plane0, glm::vec3 no
         }
         if (glm::all(glm::notEqual(test_intersect, glm::vec3(-99,-99,-99)))) {
             points.push_back(glm::vec3(test_intersect));
-            //std::cout << "test intersect for edge " << i/2 << ": " << test_intersect.x << " " << test_intersect.y << " " << test_intersect.z << "\n";
         }
     }
     // find the centroid of the intersections
@@ -837,13 +809,6 @@ std::vector<glm::vec3> intersect_points_per_plane(glm::vec3 plane0, glm::vec3 no
     insertion_sort(points, centroid);
     // insert the centroid point
     points.insert(points.begin(), centroid);
-    /*
-    std::cout << "after sorting" << "\n";
-    for (int i = 0; i < points.size(); i++) {
-        std::cout << "points " << i << ": " << points[i].x << " " << points[i].y << " " << points[i].z << "\n";
-    }
-    std::cout << "\n\n";
-    */
     return points;
 }
 
@@ -958,10 +923,8 @@ int get_slide_x(int slider, int slide_space)
 
 // update the transfer function
 // ------------------------------------------------------------------
-void update_transfer_func(VectorXf &func, int range, int num_sliders, int slide_space)
+void update_transfer_func(VectorXf &func, int range, int slide_space)
 {
-    // compute the space between two sliders
-    //int slide_space = int((float)(range - 1) / (num_sliders - 1));
     for (int i = 0; i < range; i++) {
         if (i % slide_space == 0) {
             // do nothing
@@ -973,5 +936,46 @@ void update_transfer_func(VectorXf &func, int range, int num_sliders, int slide_
             int slider1_x = get_slide_x(slider1, slide_space);
             func[i] = func[slider0_x] + (func[slider1_x] - func[slider0_x]) * ((float(i) - slider0_x) / (slider1_x - slider0_x));
         }
+    }
+}
+
+// load 3D texture function
+// ---------------------------------------------------
+unsigned int load3DTexture(std::string texture_path, int width, int height, int depth)
+{
+    //std::string texture_path = "./geometry/Bucky_32_32_32.raw";
+    GLubyte *texture_data = load_3d_raw_data(texture_path, glm::vec3(width,height,depth));
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_3D, textureID);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP);
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_RED, width, height, depth, 0, GL_RED, GL_UNSIGNED_BYTE, texture_data);
+    return textureID;
+}
+
+// setup 3D model
+void setupModel()
+{
+    switch(model) {
+        case Model1:
+            texture_path = "./geometry/Bucky_32_32_32.raw";
+            textureID = load3DTexture(texture_path, 32, 32, 32);
+            break;
+        case Model2:
+            texture_path = "./geometry/BostonTeapot_256_256_178.raw";
+            textureID = load3DTexture(texture_path, 256, 256, 178);
+            break;
+        case Model3:
+            texture_path = "./geometry/Bonsai_512_512_154.raw";
+            textureID = load3DTexture(texture_path, 512, 512, 154);
+            break;
+        case Model4:
+            texture_path = "./geometry/Head_256_256_225.raw";
+            textureID = load3DTexture(texture_path, 256, 256, 225);
+            break;
     }
 }
