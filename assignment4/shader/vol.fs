@@ -9,6 +9,8 @@ uniform sampler3D ourTexture;
 uniform bool textureMapFlag;
 
 // variables used to calculate the transfer function
+uniform int reference_sampling_rate;
+uniform int sampling_rate;
 uniform int transfer_func_range;
 uniform int slide_space;
 uniform float slider0;
@@ -30,7 +32,10 @@ void main()
         vec2 tfTexCoord = vec2(intensity, 0.0);
         vec4 tf = texture(tfTex, tfTexCoord);
         float tfVal = compute_transfer_func(xPos, transfer_func_range, slide_space, slider0, slider1, slider2, slider3, slider4, slider5);
-        FragColor = vec4(tf.rgb*tfVal, tfVal);
+        float alpha = tfVal;
+        // opacity correction
+        alpha = 1 - pow((1 - alpha), float(reference_sampling_rate)/float(sampling_rate));
+        FragColor = vec4(tf.rgb*alpha, alpha);
     }
     else {
         FragColor = ourColor;

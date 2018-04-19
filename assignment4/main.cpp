@@ -605,16 +605,6 @@ int main()
         objectShader.setBool("textureMapFlag", textureMapFlag);
         
         // set the transfer function values
-        /*
-        uniform int transfer_func_range;
-        uniform int slide_space;
-        uniform float slider0;
-        uniform float slider1;
-        uniform float slider2;
-        uniform float slider3;
-        uniform float slider4;
-        uniform float slider5;
-        */
         objectShader.setInt("transfer_func_range", transfer_func_range);
         objectShader.setInt("slide_space", slide_space);
         objectShader.setFloat("slider0", func[0*slide_space]);
@@ -623,6 +613,10 @@ int main()
         objectShader.setFloat("slider3", func[3*slide_space]);
         objectShader.setFloat("slider4", func[4*slide_space]);
         objectShader.setFloat("slider5", func[5*slide_space]);
+        
+        // set the sampling_rate and reference_sampling_rate
+        objectShader.setInt("sampling_rate", sampling_rate);
+        objectShader.setInt("reference_sampling_rate", reference_sampling_rate);
         
         // enable culling face
         //glEnable(GL_CULL_FACE);
